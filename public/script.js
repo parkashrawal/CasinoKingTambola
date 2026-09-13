@@ -6,6 +6,7 @@ let isHost = false;
 let autoInterval = null;
 let autoRunning = false;
 let calledNumbers = [];
+let allPlayers = [];
 
 function show(id) {
   ['lobby','waiting','game'].forEach(x => {
@@ -44,8 +45,16 @@ function joinRoom() {
 }
 
 socket.on('playerList', (list) => {
+  allPlayers = list;
   document.getElementById('playerCount').textContent = list.length;
-  document.getElementById('playerList').innerHTML = list.map(n => `<li>${n}</li>`).join('');
+  document.getElementById('playerList').innerHTML = list.map(p => `<li>${p.name}</li>`).join('');
+  if (document.getElementById('game').style.display === 'block') {
+    renderAllTickets();
+  }
+});
+
+socket.on('newPlayerJoined', ({ name, total }) => {
+  document.getElementById('waitMsg').textContent = `✅ ${name} जोडियो (${total} जना)`;
 });
 
 socket.on('playerLeft', ({ name }) => {
@@ -56,15 +65,17 @@ function startGame() {
   socket.emit('startGame', { code: roomCode });
 }
 
-socket.on('gameStarted', () => {
+socket.on('gameStarted', ({ players }) => {
+  allPlayers = players;
   document.getElementById('gameRoomCode').textContent = roomCode;
   if (isHost) document.getElementById('hostPanel').style.display = 'block';
-  renderTicket();
+  renderMyTicket();
+  renderAllTickets();
   show('game');
 });
 
-function renderTicket() {
-  const div = document.getElementById('ticket');
+function renderMyTicket() {
+  const div = document.getElementById('myTicket');
   div.innerHTML = '';
   myTicket.forEach(row => {
     row.forEach(num => {
@@ -77,6 +88,35 @@ function renderTicket() {
       }
       div.appendChild(c);
     });
+  });
+}
+
+function renderAllTickets() {
+  const container = document.getElementById('allTickets');
+  container.innerHTML = '';
+  allPlayers.forEach(player => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'player-ticket-wrapper';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'player-ticket-name';
+    nameEl.textContent = '👤 ' + player.name;
+    wrapper.appendChild(nameEl);
+    const ticketDiv = document.createElement('div');
+    ticketDiv.className = 'ticket small';
+    player.ticket.forEach(row => {
+      row.forEach(num => {
+        const c = document.createElement('div');
+        c.className = 'cell' + (num === null ? ' empty' : '');
+        if (num !== null) {
+          c.textContent = num;
+          c.dataset.num = num;
+          if (calledNumbers.includes(num)) c.classList.add('called');
+        }
+        ticketDiv.appendChild(c);
+      });
+    });
+    wrapper.appendChild(ticketDiv);
+    container.appendChild(wrapper);
   });
 }
 
@@ -104,7 +144,10 @@ function autoToggle() {
 socket.on('numberCalled', ({ number, allCalled }) => {
   calledNumbers = allCalled;
   document.getElementById('currentNumber').textContent = number;
-  document.querySelectorAll('.cell').forEach(c => {
+  document.querySelectorAll('#myTicket .cell').forEach(c => {
+    if (c.dataset.num == number) c.classList.add('called');
+  });
+  document.querySelectorAll('#allTickets .cell').forEach(c => {
     if (c.dataset.num == number) c.classList.add('called');
   });
   const list = document.getElementById('calledList');
@@ -115,23 +158,40 @@ socket.on('numberCalled', ({ number, allCalled }) => {
 
 function claim(type) {
   const marked = [];
-  document.querySelectorAll('.cell.marked').forEach(c => marked.push(parseInt(c.dataset.num)));
+  document.querySelectorAll('#myTicket .cell.marked').forEach(c => marked.push(parseInt(c.dataset.num)));
   socket.emit('claimWin', { code: roomCode, type, markedNumbers: marked });
 }
 
 socket.on('winner', ({ type, name }) => {
-  document.getElementById('gameMsg').textContent = `🎉 ${type} जित्नुभयो: ${name}`;
-  document.getElementById('gameMsg').style.color = '#38ef7d';
-  if (type === 'फुल हाउस' && autoRunning) autoToggle();
+  const msg = document.getElementById('gameMsg');
+  msg.textContent = `🎉 ${type} जित्नुभयो: ${name}`;
+  msg.style.color = '#38ef7d';
+  msg.style.fontSize = '1.2rem';
+  showBigAnnouncement(`🎉 ${type} जित्यो: ${name}`);
+});
+
+socket.on('gameOver', ({ message }) => {
+  if (autoRunning) autoToggle();
+  const msg = document.getElementById('gameMsg');
+  msg.textContent = message;
+  msg.style.color = '#ffd700';
+  msg.style.whiteSpace = 'pre-line';
+  msg.style.fontSize = '1.1rem';
+  showBigAnnouncement('🏁 खेल समाप्त!');
 });
 
 socket.on('claimResult', ({ success, message }) => {
   if (!success) {
-    document.getElementById('gameMsg').textContent = '❌ ' + message;
-    document.getElementById('gameMsg').style.color = '#ff6b6b';
+    const msg = document.getElementById('gameMsg');
+    msg.textContent = '❌ ' + message;
+    msg.style.color = '#ff6b6b';
   }
 });
 
-socket.on('gameOver', ({ message }) => {
-  document.getElementById('gameMsg').textContent = message;
-});
+function showBigAnnouncement(text) {
+  const div = document.createElement('div');
+  div.className = 'big-announcement';
+  div.textContent = text;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 4000);
+}

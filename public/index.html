@@ -38,14 +38,16 @@
     <button onclick="autoToggle()" id="autoBtn">अटो: बन्द</button>
   </div>
   <h3>तपाईंको टिकट</h3>
-  <div id="ticket" class="ticket"></div>
+  <div id="myTicket" class="ticket"></div>
   <div class="claim-buttons">
-    <button onclick="claim('top')">टप लाइन</button>
-    <button onclick="claim('middle')">मिडल लाइन</button>
-    <button onclick="claim('bottom')">बोटम लाइन</button>
+    <button onclick="claim('corner')">कर्नर (४ कुना)</button>
     <button onclick="claim('full')">फुल हाउस</button>
   </div>
   <div id="gameMsg" class="msg"></div>
+
+  <h3>सबै खेलाडीका टिकट</h3>
+  <div id="allTickets"></div>
+
   <h3>निकालिएका नम्बरहरू</h3>
   <div id="calledList" class="called-list"></div>
 </div>

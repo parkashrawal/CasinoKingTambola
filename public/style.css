@@ -19,3 +19,52 @@ hr { border:1px solid rgba(255,255,255,0.2); margin:15px 0; }
 .called-list span { background:rgba(255,215,0,0.3); padding:4px 10px; border-radius:5px; font-weight:bold; }
 ul { list-style:none; padding:5px; }
 ul li { padding:6px; background:rgba(255,255,255,0.1); margin:4px 0; border-radius:5px; }
+/* सबै खेलाडीका टिकट */
+#allTickets {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+.player-ticket-wrapper {
+  background: rgba(0,0,0,0.2);
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,215,0,0.3);
+}
+.player-ticket-name {
+  color: #ffd700;
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 0.95rem;
+}
+.ticket.small .cell {
+  font-size: 0.6rem;
+}
+.ticket.small {
+  padding: 5px;
+  gap: 2px;
+}
+
+/* ठूलो सन्देश */
+.big-announcement {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+  padding: 25px 40px;
+  border-radius: 15px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  z-index: 9999;
+  text-align: center;
+  animation: popIn 0.4s ease-out;
+  max-width: 90%;
+}
+@keyframes popIn {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}

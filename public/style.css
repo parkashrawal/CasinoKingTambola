@@ -6,6 +6,7 @@ h2, h3 { color:#ffd700; margin-bottom:10px; }
 input { width:100%; padding:12px; border-radius:8px; border:none; margin:8px 0; font-size:1rem; }
 button { background:linear-gradient(135deg,#ffd700,#ff8c00); color:#000; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; margin:5px 0; width:100%; font-size:1rem; }
 button:active { transform:scale(0.98); }
+button:disabled { cursor:not-allowed; }
 hr { border:1px solid rgba(255,255,255,0.2); margin:15px 0; }
 .msg { text-align:center; padding:10px; margin-top:10px; border-radius:8px; font-weight:bold; min-height:20px; }
 .top-bar { display:flex; justify-content:space-between; margin-bottom:10px; font-size:1.1rem; }
@@ -19,6 +20,7 @@ hr { border:1px solid rgba(255,255,255,0.2); margin:15px 0; }
 .called-list span { background:rgba(255,215,0,0.3); padding:4px 10px; border-radius:5px; font-weight:bold; }
 ul { list-style:none; padding:5px; }
 ul li { padding:6px; background:rgba(255,255,255,0.1); margin:4px 0; border-radius:5px; }
+
 /* सबै खेलाडीका टिकट */
 #allTickets {
   display: flex;
@@ -67,4 +69,29 @@ ul li { padding:6px; background:rgba(255,255,255,0.1); margin:4px 0; border-radi
 @keyframes popIn {
   0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
   100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* १-९९ नम्बर बोर्ड */
+.number-board {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+}
+.num-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+.num-cell.called {
+  background: #ffd700;
+  color: #000;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(255,215,0,0.8);
 }

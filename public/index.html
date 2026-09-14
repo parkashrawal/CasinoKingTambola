@@ -38,6 +38,17 @@
 
 <div id="game" style="display:none">
 
+  <div class="winner-banner">
+    <div class="winner-item">
+      <span class="winner-label">🏆 फुल हाउस (विजेता):</span>
+      <span class="winner-name" id="fullWinnerName">--</span>
+    </div>
+    <div class="winner-item">
+      <span class="winner-label">🥈 कर्नर (दोस्रो):</span>
+      <span class="winner-name" id="cornerWinnerName">--</span>
+    </div>
+  </div>
+
   <div class="card">
     <h3>📋 नम्बर बोर्ड (१-९९)</h3>
     <div id="numberBoard" class="number-board"></div>
@@ -54,11 +65,6 @@
     </div>
     <h3>तपाईंको टिकट</h3>
     <div id="myTicket" class="ticket"></div>
-
-    <div class="claim-buttons">
-      <button onclick="claim('corner')" id="cornerBtn">🥈 कर्नर (४ कुना)</button>
-      <button onclick="claim('full')" id="fullBtn">🏆 फुल हाउस</button>
-    </div>
 
     <div id="gameMsg" class="msg"></div>
 

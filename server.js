@@ -15,6 +15,7 @@ function generateRoomCode() {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
 
+// ===== टिकट जेनेरेटर (३×९, प्रत्येक लाइनमा ५ नम्बर) =====
 function generateTicket() {
   const colRanges = [
     [1,9],[10,19],[20,29],[30,39],[40,49],
@@ -57,26 +58,18 @@ function generateTicket() {
   return ticket;
 }
 
-// कर्नर = टिकटको वर्गाकार ४ कुना
+// ===== कर्नर नम्बरहरू (टिकटको ४ कुना) =====
 function getCorners(ticket) {
   const corners = [];
-  // पहिलो लाइनको पहिलो नम्बर (माथि बायाँ)
   for (let c = 0; c < 9; c++) if (ticket[0][c] !== null) { corners.push(ticket[0][c]); break; }
-  // पहिलो लाइनको अन्तिम नम्बर (माथि दायाँ)
   for (let c = 8; c >= 0; c--) if (ticket[0][c] !== null) { corners.push(ticket[0][c]); break; }
-  // अन्तिम लाइनको पहिलो नम्बर (तल बायाँ)
   for (let c = 0; c < 9; c++) if (ticket[2][c] !== null) { corners.push(ticket[2][c]); break; }
-  // अन्तिम लाइनको अन्तिम नम्बर (तल दायाँ)
   for (let c = 8; c >= 0; c--) if (ticket[2][c] !== null) { corners.push(ticket[2][c]); break; }
   return corners;
 }
 
-// खेल समाप्त भयो कि जाँच्ने
+// ===== खेल समाप्त जाँच =====
 function checkGameOver(room, code) {
-  // खेल समाप्त हुन्छ जब:
-  // १. फुल हाउस विजेता छ, र
-  // २. कर्नर विजेता छ, र
-  // ३. ती दुई फरक व्यक्ति हुन्
   if (
     room.winners.full &&
     room.winners.corner &&
@@ -121,7 +114,6 @@ io.on('connection', (socket) => {
     socket.join(code);
     callback({ success: true, code, ticket });
 
-    // सबैलाई खेलाडी सूची + टिकट पठाउने
     io.to(code).emit('playerList', room.players.map(p => ({ name: p.name, ticket: p.ticket })));
     io.to(code).emit('newPlayerJoined', { name: playerName, total: room.players.length });
     console.log(`${playerName} जोडियो रुम ${code} मा`);
@@ -173,6 +165,7 @@ io.on('connection', (socket) => {
       if (playerNums.every(n => markedNumbers.includes(n))) {
         room.winners.full = player.name;
         io.to(code).emit('winner', { type: 'फुल हाउस (विजेता)', name: player.name });
+        console.log(`फुल हाउस विजेता: ${player.name} (रुम ${code})`);
         checkGameOver(room, code);
       } else {
         socket.emit('claimResult', { success: false, message: 'सबै नम्बर मिलेनन्' });
@@ -184,19 +177,17 @@ io.on('connection', (socket) => {
       if (room.winners.corner) {
         return socket.emit('claimResult', { success: false, message: 'कर्नर पहिले नै जितियो' });
       }
-
-      // यदि फुल हाउस जित्ने व्यक्ति नै यो हो भने → उ दोस्रो बन्न पाउँदैन
       if (room.winners.full === player.name) {
         return socket.emit('claimResult', {
           success: false,
           message: 'तपाईं विजेता भइसक्नुभयो — अर्को व्यक्तिले कर्नर जित्नुपर्छ'
         });
       }
-
       const corners = getCorners(player.ticket);
       if (corners.every(n => markedNumbers.includes(n))) {
         room.winners.corner = player.name;
         io.to(code).emit('winner', { type: 'कर्नर (दोस्रो)', name: player.name });
+        console.log(`कर्नर विजेता: ${player.name} (रुम ${code})`);
         checkGameOver(room, code);
       } else {
         socket.emit('claimResult', { success: false, message: 'कर्नरका ४ नम्बर मिलेनन्' });

@@ -8,8 +8,7 @@ let autoRunning = false;
 let calledNumbers = [];
 let allPlayers = [];
 
-// ⚠️ यहाँ तपाईंको होस्ट पासवर्ड राख्नुहोस्
-// जे पासवर्ड राख्नुभयो, त्यही हाले मात्र रुम बनाउन मिल्छ
+// ⚠️ होस्ट पासवर्ड — यहाँ आफ्नो पासवर्ड राख्नुहोस्
 const HOST_PASSWORD = 'pgpk3535';
 
 function showHostLogin() {
@@ -168,7 +167,6 @@ function renderMyTicket() {
       if (num !== null) {
         c.textContent = num;
         c.dataset.num = num;
-        c.onclick = () => toggleMark(c, num);
       }
       div.appendChild(c);
     });
@@ -202,11 +200,6 @@ function renderAllTickets() {
     wrapper.appendChild(ticketDiv);
     container.appendChild(wrapper);
   });
-}
-
-function toggleMark(cell, num) {
-  if (!calledNumbers.includes(num)) return;
-  cell.classList.toggle('marked');
 }
 
 function callNumber() {
@@ -246,36 +239,27 @@ socket.on('numberCalled', ({ number, allCalled }) => {
   list.prepend(s);
 });
 
-function claim(type) {
-  const marked = [];
-  document.querySelectorAll('#myTicket .cell.marked').forEach(c => marked.push(parseInt(c.dataset.num)));
-  socket.emit('claimWin', { code: roomCode, type, markedNumbers: marked });
-}
-
 // ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name }) => {
   console.log('विजेता आयो:', type, name);
 
   const msg = document.getElementById('gameMsg');
-  msg.textContent = `🎉 ${type} जित्नुभयो: ${name}`;
+  msg.textContent = `🎉 ${type} जित्यो: ${name}`;
   msg.style.color = '#38ef7d';
   msg.style.fontSize = '1.2rem';
 
+  // नाम पट्टीमा देखाउने
   if (type.includes('फुल हाउस')) {
-    const btn = document.getElementById('fullBtn');
-    if (btn) {
-      btn.textContent = `🇳🇵 फुल हाउस: ${name}`;
-      btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
-      btn.style.color = '#fff';
-      btn.disabled = true;
+    const el = document.getElementById('fullWinnerName');
+    if (el) {
+      el.textContent = name;
+      el.style.color = '#38ef7d';
     }
   } else if (type.includes('कर्नर')) {
-    const btn = document.getElementById('cornerBtn');
-    if (btn) {
-      btn.textContent = `🥈 कर्नर: ${name}`;
-      btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
-      btn.style.color = '#fff';
-      btn.disabled = true;
+    const el = document.getElementById('cornerWinnerName');
+    if (el) {
+      el.textContent = name;
+      el.style.color = '#38ef7d';
     }
   }
 
@@ -312,18 +296,10 @@ socket.on('gameOver', ({ message }) => {
   showBigAnnouncement('🏁 खेल समाप्त!');
 });
 
-socket.on('claimResult', ({ success, message }) => {
-  if (!success) {
-    const msg = document.getElementById('gameMsg');
-    msg.textContent = '❌ ' + message;
-    msg.style.color = '#ff6b6b';
-  }
-});
-
 function showBigAnnouncement(text) {
   const div = document.createElement('div');
   div.className = 'big-announcement';
   div.textContent = text;
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-          }
+}

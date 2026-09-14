@@ -15,6 +15,7 @@ function generateRoomCode() {
   return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
 
+// ===== टिकट जेनेरेटर =====
 function generateTicket() {
   const colRanges = [
     [1,9],[10,19],[20,29],[30,39],[40,49],
@@ -74,7 +75,6 @@ function checkWinners(room, code) {
     const player = room.players[i];
     const playerNums = player.ticket.flat().filter(n => n !== null);
 
-    // ===== फुल हाउस जाँच =====
     if (!room.winners.full) {
       if (playerNums.every(n => calledSet.has(n))) {
         room.winners.full = player.name;
@@ -85,7 +85,6 @@ function checkWinners(room, code) {
       }
     }
 
-    // ===== कर्नर जाँच =====
     if (!room.winners.corner) {
       if (room.winners.full === player.name) continue;
       const corners = getCorners(player.ticket);
@@ -100,7 +99,6 @@ function checkWinners(room, code) {
   }
 }
 
-// ===== खेल समाप्त जाँच =====
 function checkGameOver(room, code) {
   if (
     room.winners.full &&
@@ -117,49 +115,45 @@ function checkGameOver(room, code) {
 io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
 
-  socket.on('createRoom', ({ playerName }, callback) => {
+  // ===== होस्टले नाम सहित रुम बनाउने =====
+  socket.on('createRoomWithNames', ({ names }, callback) => {
     const code = generateRoomCode();
+    const players = names.map((name, i) => ({
+      id: 'player-' + i,
+      name: name,
+      ticket: generateTicket(),
+      isHost: false
+    }));
     rooms[code] = {
       hostId: socket.id,
-      players: [{ id: socket.id, name: playerName, ticket: generateTicket(), isHost: true }],
+      players: players,
       calledNumbers: [],
       allNumbers: Array.from({ length: 99 }, (_, i) => i + 1),
-      started: false,
+      started: true,
       gameOver: false,
       winners: { corner: null, full: null }
     };
     socket.join(code);
-    callback({ success: true, code, ticket: rooms[code].players[0].ticket });
-    console.log('रुम बन्यो:', code);
+    callback({ success: true, code });
+    io.to(code).emit('playerList', players.map(p => ({ name: p.name, ticket: p.ticket })));
+    console.log('रुम बन्यो:', code, '| खेलाडी:', names.join(', '));
   });
 
-  socket.on('joinRoom', ({ code, playerName }, callback) => {
+  // ===== खेल हेर्ने (साथीहरूको लागि) =====
+  socket.on('viewRoom', ({ code }, callback) => {
     const room = rooms[code];
     if (!room) return callback({ success: false, message: 'रुम भेटिएन' });
-    if (room.started) return callback({ success: false, message: 'गेम सुरु भइसक्यो' });
-    if (room.players.length >= 15) return callback({ success: false, message: 'रुम भरियो (१५ जना)' });
-
-    const ticket = generateTicket();
-    room.players.push({ id: socket.id, name: playerName, ticket, isHost: false });
     socket.join(code);
-    callback({ success: true, code, ticket });
-
-    io.to(code).emit('playerList', room.players.map(p => ({ name: p.name, ticket: p.ticket })));
-    io.to(code).emit('newPlayerJoined', { name: playerName, total: room.players.length });
-    console.log(`${playerName} जोडियो रुम ${code} मा`);
-  });
-
-  socket.on('startGame', ({ code }) => {
-    const room = rooms[code];
-    if (!room || room.hostId !== socket.id) return;
-    room.started = true;
-    io.to(code).emit('gameStarted', {
-      players: room.players.map(p => ({ name: p.name, ticket: p.ticket }))
+    callback({
+      success: true,
+      players: room.players.map(p => ({ name: p.name, ticket: p.ticket })),
+      calledNumbers: room.calledNumbers,
+      winners: room.winners
     });
-    console.log('गेम सुरु:', code);
+    console.log(`दर्शक जोडियो रुम ${code} मा`);
   });
 
-  // ===== नम्बर कल =====
+  // ===== नम्बर कल (होस्टले) =====
   socket.on('callNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -173,29 +167,11 @@ io.on('connection', (socket) => {
     room.calledNumbers.push(num);
     io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
 
-    // ===== स्वचालित विजेता जाँच =====
     checkWinners(room, code);
   });
 
   socket.on('disconnect', () => {
-    for (const code in rooms) {
-      const room = rooms[code];
-      const idx = room.players.findIndex(p => p.id === socket.id);
-      if (idx !== -1) {
-        const name = room.players[idx].name;
-        room.players.splice(idx, 1);
-        if (room.players.length === 0) {
-          delete rooms[code];
-        } else {
-          if (room.hostId === socket.id) {
-            room.hostId = room.players[0].id;
-            room.players[0].isHost = true;
-          }
-          io.to(code).emit('playerList', room.players.map(p => ({ name: p.name, ticket: p.ticket })));
-          io.to(code).emit('playerLeft', { name });
-        }
-      }
-    }
+    console.log('डिस्कनेक्ट:', socket.id);
   });
 });
 

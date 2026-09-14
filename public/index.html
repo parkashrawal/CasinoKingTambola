@@ -4,21 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>नम्बर मेला</title>
+
+<!-- PWA Meta Tags -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e3c72">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="नम्बर मेला">
+
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <h1>🎯 नम्बर मेला</h1>
 
-<!-- ===== पहिलो पेज ===== -->
 <div id="landing" class="card">
   <h2>स्वागत छ!</h2>
-  <button onclick="showHostLogin()">🎩 होस्ट लगइन </button>
+  <button onclick="showHostLogin()">🎩 होस्ट लगइन (रुम बनाउन)</button>
   <hr>
   <button onclick="viewGame()">👀 खेल हेर्नुहोस्</button>
   <div id="landingMsg" class="msg"></div>
 </div>
 
-<!-- ===== होस्ट लगइन ===== -->
 <div id="hostLoginBox" class="card" style="display:none">
   <h2>🎩 होस्ट लगइन</h2>
   <input id="hostPassword" placeholder="होस्ट पासवर्ड" type="password">
@@ -27,7 +33,6 @@
   <div id="hostLoginMsg" class="msg"></div>
 </div>
 
-<!-- ===== टिकट बनाउने ===== -->
 <div id="ticketSetup" class="card" style="display:none">
   <h2>✏️ खेलाडीहरूको नाम लेख्नुहोस्</h2>
   <p>कम्तीमा २ जना, बढीमा १५ जना</p>
@@ -36,7 +41,6 @@
   <div id="setupMsg" class="msg"></div>
 </div>
 
-<!-- ===== खेल स्क्रिन ===== -->
 <div id="game" style="display:none">
 
   <div class="winner-banner">
@@ -77,5 +81,16 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
+
+<!-- PWA Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+        .then((reg) => console.log('Service Worker चल्यो:', reg.scope))
+        .catch((err) => console.log('Service Worker error:', err));
+    });
+  }
+</script>
 </body>
 </html>

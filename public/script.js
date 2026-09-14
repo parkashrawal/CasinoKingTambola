@@ -6,12 +6,11 @@ let autoRunning = false;
 let calledNumbers = [];
 let allPlayers = [];
 
-// ⚠️ होस्ट पासवर्ड — यहाँ आफ्नो पासवर्ड राख्नुहोस्
+// ⚠️ होस्ट पासवर्ड
 const HOST_PASSWORD = 'pgpk3535';
 
-// ===== पेज ह्यान्डलिङ =====
 function showPage(id) {
-  ['landing','hostLoginBox','ticketSetup','playerJoin','game'].forEach(x => {
+  ['landing','hostLoginBox','ticketSetup','game'].forEach(x => {
     document.getElementById(x).style.display = 'none';
   });
   document.getElementById(id).style.display = 'block';
@@ -35,7 +34,6 @@ function hostLogin() {
   showTicketSetup();
 }
 
-// ===== टिकट बनाउने फारम =====
 function showTicketSetup() {
   const container = document.getElementById('nameInputs');
   container.innerHTML = '';
@@ -51,7 +49,7 @@ function showTicketSetup() {
   showPage('ticketSetup');
 }
 
-// ===== गेम सुरु गर्ने (नाम सहित) =====
+// ===== गेम सुरु =====
 function startGameWithNames() {
   const names = [];
   for (let i = 1; i <= 15; i++) {
@@ -66,34 +64,27 @@ function startGameWithNames() {
     if (res.success) {
       roomCode = res.code;
       isHost = true;
-      document.getElementById('gameRoomCode').textContent = roomCode;
       document.getElementById('hostPanel').style.display = 'block';
       showPage('game');
-      showBigAnnouncement('रुम कोड: ' + roomCode + '\nयो कोड साथीहरूलाई पठाउनुहोस्');
+      showBigAnnouncement('गेम सुरु भयो!');
+      console.log('रुम कोड:', roomCode);
     } else {
       document.getElementById('setupMsg').textContent = res.message;
     }
   });
 }
 
-// ===== खेल हेर्ने (साथीहरूको लागि) =====
+// ===== खेल हेर्ने (कोड बिना — सिधै) =====
 function viewGame() {
-  const code = document.getElementById('viewRoomCode').value.trim().toUpperCase();
-  if (!code) {
-    document.getElementById('landingMsg').textContent = 'रुम कोड लेख्नुहोस्!';
-    return;
-  }
-  socket.emit('viewRoom', { code }, (res) => {
+  socket.emit('viewLatestRoom', {}, (res) => {
     if (res.success) {
-      roomCode = code;
+      roomCode = res.code;
       isHost = false;
-      document.getElementById('gameRoomCode').textContent = roomCode;
       document.getElementById('hostPanel').style.display = 'none';
       allPlayers = res.players;
       calledNumbers = res.calledNumbers || [];
       renderNumberBoard();
       renderAllTickets();
-      // विजेता पहिले नै छन् भने देखाउने
       if (res.winners) {
         if (res.winners.full) {
           document.getElementById('fullWinnerName').textContent = res.winners.full;
@@ -111,11 +102,7 @@ function viewGame() {
   });
 }
 
-function joinAsViewer() {
-  viewGame();
-}
-
-// ===== सर्भरबाट आउने इभेन्ट =====
+// ===== इभेन्टहरू =====
 socket.on('playerList', (list) => {
   allPlayers = list;
   if (document.getElementById('game').style.display === 'block') {
@@ -123,7 +110,6 @@ socket.on('playerList', (list) => {
   }
 });
 
-// ===== नम्बर बोर्ड =====
 function renderNumberBoard() {
   const board = document.getElementById('numberBoard');
   if (!board) return;
@@ -138,18 +124,20 @@ function renderNumberBoard() {
   }
 }
 
-// ===== सबै टिकट =====
+// ===== सबै टिकट रेन्डर (नम्बर सहित) =====
 function renderAllTickets() {
   const container = document.getElementById('allTickets');
   if (!container) return;
   container.innerHTML = '';
-  allPlayers.forEach(player => {
+  allPlayers.forEach((player, index) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'player-ticket-wrapper';
+
     const nameEl = document.createElement('div');
     nameEl.className = 'player-ticket-name';
-    nameEl.textContent = '👤 ' + player.name;
+    nameEl.textContent = '👤 ' + player.name + ' (टिकट ' + (index + 1) + ')';
     wrapper.appendChild(nameEl);
+
     const ticketDiv = document.createElement('div');
     ticketDiv.className = 'ticket small';
     player.ticket.forEach(row => {
@@ -169,9 +157,13 @@ function renderAllTickets() {
   });
 }
 
-// ===== नम्बर कल =====
 function callNumber() {
+  if (!isHost) {
+    alert('तपाईं होस्ट होइन!');
+    return;
+  }
   socket.emit('callNumber', { code: roomCode });
+  console.log('नम्बर कल पठाइयो');
 }
 
 function autoToggle() {
@@ -186,7 +178,6 @@ function autoToggle() {
   }
 }
 
-// ===== नम्बर आउँदा =====
 socket.on('numberCalled', ({ number, allCalled }) => {
   calledNumbers = allCalled;
   document.getElementById('currentNumber').textContent = number;
@@ -205,7 +196,6 @@ socket.on('numberCalled', ({ number, allCalled }) => {
   list.prepend(s);
 });
 
-// ===== नम्बर उच्चारण =====
 function speakNumber(num) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -217,7 +207,6 @@ function speakNumber(num) {
   window.speechSynthesis.speak(utter);
 }
 
-// ===== सेलिब्रेसन सङ्गीत =====
 function playCelebration() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -240,7 +229,6 @@ function playCelebration() {
   }
 }
 
-// ===== विजेता घोषणा (आवाजमा) =====
 function announceWinner(type, name) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -249,8 +237,6 @@ function announceWinner(type, name) {
     message = `Congratulations ${name}! You are the winner for full house!`;
   } else if (type.includes('कर्नर')) {
     message = `Congratulations ${name}! You got the corner!`;
-  } else {
-    message = `Congratulations ${name}!`;
   }
   const utter = new SpeechSynthesisUtterance(message);
   utter.lang = 'en-IN';
@@ -260,10 +246,8 @@ function announceWinner(type, name) {
   window.speechSynthesis.speak(utter);
 }
 
-// ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name }) => {
   console.log('विजेता आयो:', type, name);
-
   const msg = document.getElementById('gameMsg');
   msg.textContent = `🎉 ${type} जित्यो: ${name}`;
   msg.style.color = '#38ef7d';
@@ -284,11 +268,7 @@ socket.on('winner', ({ type, name }) => {
   }
 
   playCelebration();
-
-  setTimeout(() => {
-    announceWinner(type, name);
-  }, 1200);
-
+  setTimeout(() => announceWinner(type, name), 1200);
   showBigAnnouncement(`🎉 ${type} जित्यो: ${name}`);
 });
 
@@ -299,9 +279,7 @@ socket.on('gameOver', ({ message }) => {
   msg.style.color = '#ffd700';
   msg.style.whiteSpace = 'pre-line';
   msg.style.fontSize = '1.1rem';
-
   playCelebration();
-
   setTimeout(() => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -312,7 +290,6 @@ socket.on('gameOver', ({ message }) => {
       window.speechSynthesis.speak(utter);
     }
   }, 1000);
-
   showBigAnnouncement('🏁 खेल समाप्त!');
 });
 
@@ -323,4 +300,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-}
+  }

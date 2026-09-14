@@ -75,6 +75,7 @@ function checkWinners(room, code) {
     const player = room.players[i];
     const playerNums = player.ticket.flat().filter(n => n !== null);
 
+    // फुल हाउस
     if (!room.winners.full) {
       if (playerNums.every(n => calledSet.has(n))) {
         room.winners.full = player.name;
@@ -85,6 +86,7 @@ function checkWinners(room, code) {
       }
     }
 
+    // कर्नर
     if (!room.winners.corner) {
       if (room.winners.full === player.name) continue;
       const corners = getCorners(player.ticket);
@@ -116,14 +118,18 @@ io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
 
   // ===== होस्टले नाम सहित रुम बनाउने =====
+  // names: ['Ram', 'Sita', 'Ram', 'Hari', ...] (एउटै नाम दुई पटक हुन सक्छ)
   socket.on('createRoomWithNames', ({ names }, callback) => {
     const code = generateRoomCode();
+
+    // नाम अनुसार खेलाडी बनाउने — एउटै नाम भए पनि फरक टिकट
     const players = names.map((name, i) => ({
       id: 'player-' + i,
       name: name,
       ticket: generateTicket(),
       isHost: false
     }));
+
     rooms[code] = {
       hostId: socket.id,
       players: players,
@@ -133,8 +139,10 @@ io.on('connection', (socket) => {
       gameOver: false,
       winners: { corner: null, full: null }
     };
+
     socket.join(code);
     callback({ success: true, code });
+
     io.to(code).emit('playerList', players.map(p => ({ name: p.name, ticket: p.ticket })));
     console.log('रुम बन्यो:', code, '| खेलाडी:', names.join(', '));
   });
@@ -156,8 +164,18 @@ io.on('connection', (socket) => {
   // ===== नम्बर कल (होस्टले) =====
   socket.on('callNumber', ({ code }) => {
     const room = rooms[code];
-    if (!room || room.hostId !== socket.id) return;
-    if (room.gameOver) return;
+    if (!room) {
+      console.log('रुम भेटिएन:', code);
+      return;
+    }
+    if (room.hostId !== socket.id) {
+      console.log('होस्ट होइन:', socket.id);
+      return;
+    }
+    if (room.gameOver) {
+      console.log('खेल समाप्त भइसक्यो');
+      return;
+    }
     if (room.allNumbers.length === 0) {
       io.to(code).emit('gameOver', { message: 'सबै नम्बर निकालिए' });
       return;
@@ -166,6 +184,7 @@ io.on('connection', (socket) => {
     const num = room.allNumbers.splice(idx, 1)[0];
     room.calledNumbers.push(num);
     io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
+    console.log(`नम्बर कल: ${num} (रुम ${code})`);
 
     checkWinners(room, code);
   });

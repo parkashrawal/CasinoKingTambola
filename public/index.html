@@ -12,8 +12,16 @@
 <div id="lobby" class="card">
   <h2>खेलमा सामेल हुनुहोस्</h2>
   <input id="playerName" placeholder="तपाईंको नाम" maxlength="15">
-  <button onclick="createRoom()">नयाँ रुम बनाउनुहोस् (होस्ट)</button>
+
+  <button onclick="showHostLogin()">🎩 होस्ट लगइन (रुम बनाउन)</button>
+
+  <div id="hostLogin" style="display:none">
+    <input id="hostPassword" placeholder="होस्ट पासवर्ड" type="password">
+    <button onclick="createRoom()">नयाँ रुम बनाउनुहोस्</button>
+  </div>
+
   <hr>
+  <h3>वा रुम जोडिनुहोस्</h3>
   <input id="roomCode" placeholder="रुम कोड" maxlength="4" style="text-transform:uppercase">
   <button onclick="joinRoom()">रुम जोडिनुहोस्</button>
   <div id="lobbyMsg" class="msg"></div>

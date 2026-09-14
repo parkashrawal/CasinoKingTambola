@@ -8,6 +8,15 @@ let autoRunning = false;
 let calledNumbers = [];
 let allPlayers = [];
 
+// ⚠️ यहाँ तपाईंको होस्ट पासवर्ड राख्नुहोस्
+// जे पासवर्ड राख्नुभयो, त्यही हाले मात्र रुम बनाउन मिल्छ
+const HOST_PASSWORD = 'pgpk3535';
+
+function showHostLogin() {
+  const box = document.getElementById('hostLogin');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
 // ===== नम्बर उच्चारण =====
 function speakNumber(num) {
   if (!('speechSynthesis' in window)) return;
@@ -72,7 +81,12 @@ function show(id) {
 
 function createRoom() {
   myName = document.getElementById('playerName').value.trim();
+  const pass = document.getElementById('hostPassword').value;
   if (!myName) return alert('नाम लेख्नुहोस्');
+  if (!pass) return alert('पासवर्ड लेख्नुहोस्');
+  if (pass !== HOST_PASSWORD) {
+    return alert('❌ गलत पासवर्ड! तपाईं रुम बनाउन पाउनुहुन्न।');
+  }
   socket.emit('createRoom', { playerName: myName }, (res) => {
     if (res.success) {
       roomCode = res.code;
@@ -88,7 +102,8 @@ function createRoom() {
 function joinRoom() {
   myName = document.getElementById('playerName').value.trim();
   const code = document.getElementById('roomCode').value.trim().toUpperCase();
-  if (!myName || !code) return alert('नाम र कोड लेख्नुहोस्');
+  if (!myName) return alert('नाम लेख्नुहोस्');
+  if (!code) return alert('रुम कोड लेख्नुहोस्');
   socket.emit('joinRoom', { code, playerName: myName }, (res) => {
     if (res.success) {
       roomCode = res.code;
@@ -130,7 +145,6 @@ socket.on('gameStarted', ({ players }) => {
   show('game');
 });
 
-// ===== १-९९ नम्बर बोर्ड =====
 function renderNumberBoard() {
   const board = document.getElementById('numberBoard');
   board.innerHTML = '';
@@ -240,6 +254,8 @@ function claim(type) {
 
 // ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name }) => {
+  console.log('विजेता आयो:', type, name);
+
   const msg = document.getElementById('gameMsg');
   msg.textContent = `🎉 ${type} जित्नुभयो: ${name}`;
   msg.style.color = '#38ef7d';
@@ -248,7 +264,7 @@ socket.on('winner', ({ type, name }) => {
   if (type.includes('फुल हाउस')) {
     const btn = document.getElementById('fullBtn');
     if (btn) {
-      btn.textContent = `🏆 फुल हाउस: ${name}`;
+      btn.textContent = `🇳🇵 फुल हाउस: ${name}`;
       btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
       btn.style.color = '#fff';
       btn.disabled = true;
@@ -310,4 +326,4 @@ function showBigAnnouncement(text) {
   div.textContent = text;
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-    }
+          }

@@ -9,13 +9,11 @@
 <body>
 <h1>🎯 नम्बर मेला</h1>
 
-<!-- ===== पहिलो पेज: होस्ट वा खेलाडी छान्ने ===== -->
+<!-- ===== पहिलो पेज ===== -->
 <div id="landing" class="card">
   <h2>स्वागत छ!</h2>
-  <button onclick="showHostLogin()">🎩 होस्ट लगइन</button>
+  <button onclick="showHostLogin()">🎩 होस्ट लगइन (रुम बनाउन)</button>
   <hr>
-  <h3>वा खेल हेर्नुहोस्</h3>
-  <input id="viewRoomCode" placeholder="रुम कोड" maxlength="4" style="text-transform:uppercase">
   <button onclick="viewGame()">👀 खेल हेर्नुहोस्</button>
   <div id="landingMsg" class="msg"></div>
 </div>
@@ -29,7 +27,7 @@
   <div id="hostLoginMsg" class="msg"></div>
 </div>
 
-<!-- ===== टिकट बनाउने (होस्ट) ===== -->
+<!-- ===== टिकट बनाउने ===== -->
 <div id="ticketSetup" class="card" style="display:none">
   <h2>✏️ खेलाडीहरूको नाम लेख्नुहोस्</h2>
   <p>कम्तीमा २ जना, बढीमा १५ जना</p>
@@ -38,16 +36,7 @@
   <div id="setupMsg" class="msg"></div>
 </div>
 
-<!-- ===== खेलाडी नाम लेख्ने (साथीहरूको लागि - वैकल्पिक) ===== -->
-<div id="playerJoin" class="card" style="display:none">
-  <h2>🎮 खेल हेर्नुहोस्</h2>
-  <input id="playerRoomCode" placeholder="रुम कोड" maxlength="4">
-  <button onclick="joinAsViewer()">खेल हेर्नुहोस्</button>
-  <button onclick="backToLanding()" style="background:rgba(255,255,255,0.2);color:#fff">← फिर्ता</button>
-  <div id="playerJoinMsg" class="msg"></div>
-</div>
-
-<!-- ===== खेलको स्क्रिन ===== -->
+<!-- ===== खेल स्क्रिन ===== -->
 <div id="game" style="display:none">
 
   <div class="winner-banner">
@@ -68,7 +57,6 @@
 
   <div class="card">
     <div class="top-bar">
-      <div>रुम: <b id="gameRoomCode"></b></div>
       <div>नम्बर: <b id="currentNumber">--</b></div>
     </div>
     <div class="host-panel" id="hostPanel" style="display:none">

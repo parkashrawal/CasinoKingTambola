@@ -20,11 +20,11 @@ function speakNumber(num) {
   window.speechSynthesis.speak(utter);
 }
 
-// ===== जितको सेलिब्रेसन सङ्गीत =====
+// ===== सेलिब्रेसन सङ्गीत =====
 function playCelebration() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [523.25, 659.25, 783.99, 1046.50];
+    const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
     notes.forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -49,7 +49,7 @@ function announceWinner(type, name) {
   window.speechSynthesis.cancel();
   let message = '';
   if (type.includes('फुल हाउस')) {
-    message = `Congratulations ${name}! You are the winner!`;
+    message = `Congratulations ${name}! You are the winner for full house!`;
   } else if (type.includes('कर्नर')) {
     message = `Congratulations ${name}! You got the corner!`;
   } else {
@@ -126,8 +126,23 @@ socket.on('gameStarted', ({ players }) => {
   if (isHost) document.getElementById('hostPanel').style.display = 'block';
   renderMyTicket();
   renderAllTickets();
+  renderNumberBoard();
   show('game');
 });
+
+// ===== १-९९ नम्बर बोर्ड =====
+function renderNumberBoard() {
+  const board = document.getElementById('numberBoard');
+  board.innerHTML = '';
+  for (let i = 1; i <= 99; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'num-cell';
+    cell.textContent = i;
+    cell.id = 'num-' + i;
+    if (calledNumbers.includes(i)) cell.classList.add('called');
+    board.appendChild(cell);
+  }
+}
 
 function renderMyTicket() {
   const div = document.getElementById('myTicket');
@@ -202,6 +217,9 @@ socket.on('numberCalled', ({ number, allCalled }) => {
 
   speakNumber(number);
 
+  const boardCell = document.getElementById('num-' + number);
+  if (boardCell) boardCell.classList.add('called');
+
   document.querySelectorAll('#myTicket .cell').forEach(c => {
     if (c.dataset.num == number) c.classList.add('called');
   });
@@ -220,11 +238,30 @@ function claim(type) {
   socket.emit('claimWin', { code: roomCode, type, markedNumbers: marked });
 }
 
+// ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name }) => {
   const msg = document.getElementById('gameMsg');
   msg.textContent = `🎉 ${type} जित्नुभयो: ${name}`;
   msg.style.color = '#38ef7d';
   msg.style.fontSize = '1.2rem';
+
+  if (type.includes('फुल हाउस')) {
+    const btn = document.getElementById('fullBtn');
+    if (btn) {
+      btn.textContent = `🏆 फुल हाउस: ${name}`;
+      btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
+      btn.style.color = '#fff';
+      btn.disabled = true;
+    }
+  } else if (type.includes('कर्नर')) {
+    const btn = document.getElementById('cornerBtn');
+    if (btn) {
+      btn.textContent = `🥈 कर्नर: ${name}`;
+      btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
+      btn.style.color = '#fff';
+      btn.disabled = true;
+    }
+  }
 
   playCelebration();
 

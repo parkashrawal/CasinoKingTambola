@@ -1,313 +1,224 @@
-const socket = io();
-let myTicket = null;
-let myName = '';
-let roomCode = '';
-let isHost = false;
-let autoInterval = null;
-let autoRunning = false;
-let calledNumbers = [];
-let allPlayers = [];
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-// ===== नम्बर उच्चारण =====
-function speakNumber(num) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(num.toString());
-  utter.lang = 'en-IN';
-  utter.rate = 1.0;
-  utter.pitch = 1.0;
-  utter.volume = 1.0;
-  window.speechSynthesis.speak(utter);
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+const rooms = {};
+
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2, 6).toUpperCase();
 }
 
-// ===== सेलिब्रेसन सङ्गीत =====
-function playCelebration() {
-  try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
-    notes.forEach((freq, i) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      const start = audioCtx.currentTime + i * 0.15;
-      gain.gain.setValueAtTime(0.3, start);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
-      osc.start(start);
-      osc.stop(start + 0.4);
-    });
-  } catch (e) {
-    console.log('आवाज बजाउन सकिएन');
+// ===== टिकट जेनेरेटर (३×९, प्रत्येक लाइनमा ५ नम्बर) =====
+function generateTicket() {
+  const colRanges = [
+    [1,9],[10,19],[20,29],[30,39],[40,49],
+    [50,59],[60,69],[70,79],[80,99]
+  ];
+  const ticket = Array(3).fill().map(() => Array(9).fill(null));
+  let colCounts = Array(9).fill(1);
+  let extra = 6;
+  while (extra > 0) {
+    const i = Math.floor(Math.random() * 9);
+    if (colCounts[i] < 3) { colCounts[i]++; extra--; }
   }
-}
-
-// ===== विजेता घोषणा (आवाजमा) =====
-function announceWinner(type, name) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  let message = '';
-  if (type.includes('फुल हाउस')) {
-    message = `Congratulations ${name}! You are the winner for full house!`;
-  } else if (type.includes('कर्नर')) {
-    message = `Congratulations ${name}! You got the corner!`;
-  } else {
-    message = `Congratulations ${name}!`;
+  for (let c = 0; c < 9; c++) {
+    const [min, max] = colRanges[c];
+    const pool = [];
+    for (let n = min; n <= max; n++) pool.push(n);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const chosen = pool.slice(0, colCounts[c]);
+    const rows = [0,1,2].sort(() => Math.random() - 0.5).slice(0, colCounts[c]);
+    rows.forEach((r, i) => { ticket[r][c] = chosen[i]; });
   }
-  const utter = new SpeechSynthesisUtterance(message);
-  utter.lang = 'en-IN';
-  utter.rate = 0.9;
-  utter.pitch = 1.2;
-  utter.volume = 1.0;
-  window.speechSynthesis.speak(utter);
-}
-
-function show(id) {
-  ['lobby','waiting','game'].forEach(x => {
-    document.getElementById(x).style.display = 'none';
-  });
-  document.getElementById(id).style.display = 'block';
-}
-
-function createRoom() {
-  myName = document.getElementById('playerName').value.trim();
-  if (!myName) return alert('नाम लेख्नुहोस्');
-  socket.emit('createRoom', { playerName: myName }, (res) => {
-    if (res.success) {
-      roomCode = res.code;
-      myTicket = res.ticket;
-      isHost = true;
-      document.getElementById('roomCodeDisplay').textContent = roomCode;
-      document.getElementById('startBtn').style.display = 'block';
-      show('waiting');
-    } else document.getElementById('lobbyMsg').textContent = res.message;
-  });
-}
-
-function joinRoom() {
-  myName = document.getElementById('playerName').value.trim();
-  const code = document.getElementById('roomCode').value.trim().toUpperCase();
-  if (!myName || !code) return alert('नाम र कोड लेख्नुहोस्');
-  socket.emit('joinRoom', { code, playerName: myName }, (res) => {
-    if (res.success) {
-      roomCode = res.code;
-      myTicket = res.ticket;
-      document.getElementById('roomCodeDisplay').textContent = roomCode;
-      show('waiting');
-    } else document.getElementById('lobbyMsg').textContent = res.message;
-  });
-}
-
-socket.on('playerList', (list) => {
-  allPlayers = list;
-  document.getElementById('playerCount').textContent = list.length;
-  document.getElementById('playerList').innerHTML = list.map(p => `<li>${p.name}</li>`).join('');
-  if (document.getElementById('game').style.display === 'block') {
-    renderAllTickets();
-  }
-});
-
-socket.on('newPlayerJoined', ({ name, total }) => {
-  document.getElementById('waitMsg').textContent = `✅ ${name} जोडियो (${total} जना)`;
-});
-
-socket.on('playerLeft', ({ name }) => {
-  document.getElementById('waitMsg').textContent = `${name} बाहिरियो`;
-});
-
-function startGame() {
-  socket.emit('startGame', { code: roomCode });
-}
-
-socket.on('gameStarted', ({ players }) => {
-  allPlayers = players;
-  document.getElementById('gameRoomCode').textContent = roomCode;
-  if (isHost) document.getElementById('hostPanel').style.display = 'block';
-  renderMyTicket();
-  renderAllTickets();
-  renderNumberBoard();
-  show('game');
-});
-
-// ===== १-९९ नम्बर बोर्ड =====
-function renderNumberBoard() {
-  const board = document.getElementById('numberBoard');
-  board.innerHTML = '';
-  for (let i = 1; i <= 99; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'num-cell';
-    cell.textContent = i;
-    cell.id = 'num-' + i;
-    if (calledNumbers.includes(i)) cell.classList.add('called');
-    board.appendChild(cell);
-  }
-}
-
-function renderMyTicket() {
-  const div = document.getElementById('myTicket');
-  div.innerHTML = '';
-  myTicket.forEach(row => {
-    row.forEach(num => {
-      const c = document.createElement('div');
-      c.className = 'cell' + (num === null ? ' empty' : '');
-      if (num !== null) {
-        c.textContent = num;
-        c.dataset.num = num;
-        c.onclick = () => toggleMark(c, num);
-      }
-      div.appendChild(c);
-    });
-  });
-}
-
-function renderAllTickets() {
-  const container = document.getElementById('allTickets');
-  container.innerHTML = '';
-  allPlayers.forEach(player => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'player-ticket-wrapper';
-    const nameEl = document.createElement('div');
-    nameEl.className = 'player-ticket-name';
-    nameEl.textContent = '👤 ' + player.name;
-    wrapper.appendChild(nameEl);
-    const ticketDiv = document.createElement('div');
-    ticketDiv.className = 'ticket small';
-    player.ticket.forEach(row => {
-      row.forEach(num => {
-        const c = document.createElement('div');
-        c.className = 'cell' + (num === null ? ' empty' : '');
-        if (num !== null) {
-          c.textContent = num;
-          c.dataset.num = num;
-          if (calledNumbers.includes(num)) c.classList.add('called');
+  for (let r = 0; r < 3; r++) {
+    let count = ticket[r].filter(x => x !== null).length;
+    while (count > 5) {
+      const cols = ticket[r].map((v,i) => v !== null ? i : -1).filter(i => i >= 0);
+      const rc = cols[Math.floor(Math.random() * cols.length)];
+      for (let rr = 0; rr < 3; rr++) {
+        if (rr !== r && ticket[rr][rc] === null) {
+          ticket[rr][rc] = ticket[r][rc];
+          ticket[r][rc] = null;
+          break;
         }
-        ticketDiv.appendChild(c);
-      });
+      }
+      count = ticket[r].filter(x => x !== null).length;
+    }
+  }
+  return ticket;
+}
+
+// ===== कर्नर नम्बरहरू (टिकटको ४ कुना) =====
+function getCorners(ticket) {
+  const corners = [];
+  for (let c = 0; c < 9; c++) if (ticket[0][c] !== null) { corners.push(ticket[0][c]); break; }
+  for (let c = 8; c >= 0; c--) if (ticket[0][c] !== null) { corners.push(ticket[0][c]); break; }
+  for (let c = 0; c < 9; c++) if (ticket[2][c] !== null) { corners.push(ticket[2][c]); break; }
+  for (let c = 8; c >= 0; c--) if (ticket[2][c] !== null) { corners.push(ticket[2][c]); break; }
+  return corners;
+}
+
+// ===== खेल समाप्त जाँच =====
+function checkGameOver(room, code) {
+  if (
+    room.winners.full &&
+    room.winners.corner &&
+    room.winners.full !== room.winners.corner
+  ) {
+    room.gameOver = true;
+    io.to(code).emit('gameOver', {
+      message: `🏁 खेल समाप्त!\n\n🏆 विजेता (फुल हाउस): ${room.winners.full}\n🥈 दोस्रो (कर्नर): ${room.winners.corner}`
     });
-    wrapper.appendChild(ticketDiv);
-    container.appendChild(wrapper);
-  });
-}
-
-function toggleMark(cell, num) {
-  if (!calledNumbers.includes(num)) return;
-  cell.classList.toggle('marked');
-}
-
-function callNumber() {
-  socket.emit('callNumber', { code: roomCode });
-}
-
-function autoToggle() {
-  if (autoRunning) {
-    clearInterval(autoInterval);
-    autoRunning = false;
-    document.getElementById('autoBtn').textContent = 'अटो: बन्द';
-  } else {
-    autoRunning = true;
-    document.getElementById('autoBtn').textContent = 'अटो: चालु';
-    autoInterval = setInterval(callNumber, 3000);
   }
 }
 
-socket.on('numberCalled', ({ number, allCalled }) => {
-  calledNumbers = allCalled;
-  document.getElementById('currentNumber').textContent = number;
+io.on('connection', (socket) => {
+  console.log('जोडियो:', socket.id);
 
-  speakNumber(number);
-
-  const boardCell = document.getElementById('num-' + number);
-  if (boardCell) boardCell.classList.add('called');
-
-  document.querySelectorAll('#myTicket .cell').forEach(c => {
-    if (c.dataset.num == number) c.classList.add('called');
+  // ===== रुम बनाउने =====
+  socket.on('createRoom', ({ playerName }, callback) => {
+    const code = generateRoomCode();
+    rooms[code] = {
+      hostId: socket.id,
+      players: [{ id: socket.id, name: playerName, ticket: generateTicket(), isHost: true }],
+      calledNumbers: [],
+      allNumbers: Array.from({ length: 99 }, (_, i) => i + 1),
+      started: false,
+      gameOver: false,
+      winners: { corner: null, full: null }
+    };
+    socket.join(code);
+    callback({ success: true, code, ticket: rooms[code].players[0].ticket });
+    console.log('रुम बन्यो:', code);
   });
-  document.querySelectorAll('#allTickets .cell').forEach(c => {
-    if (c.dataset.num == number) c.classList.add('called');
+
+  // ===== रुम जोडिने =====
+  socket.on('joinRoom', ({ code, playerName }, callback) => {
+    const room = rooms[code];
+    if (!room) return callback({ success: false, message: 'रुम भेटिएन' });
+    if (room.started) return callback({ success: false, message: 'गेम सुरु भइसक्यो' });
+    if (room.players.length >= 15) return callback({ success: false, message: 'रुम भरियो (१५ जना)' });
+
+    const ticket = generateTicket();
+    room.players.push({ id: socket.id, name: playerName, ticket, isHost: false });
+    socket.join(code);
+    callback({ success: true, code, ticket });
+
+    io.to(code).emit('playerList', room.players.map(p => ({ name: p.name, ticket: p.ticket })));
+    io.to(code).emit('newPlayerJoined', { name: playerName, total: room.players.length });
+    console.log(`${playerName} जोडियो रुम ${code} मा`);
   });
-  const list = document.getElementById('calledList');
-  const s = document.createElement('span');
-  s.textContent = number;
-  list.prepend(s);
-});
 
-function claim(type) {
-  const marked = [];
-  document.querySelectorAll('#myTicket .cell.marked').forEach(c => marked.push(parseInt(c.dataset.num)));
-  socket.emit('claimWin', { code: roomCode, type, markedNumbers: marked });
-}
+  // ===== गेम सुरु =====
+  socket.on('startGame', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.hostId !== socket.id) return;
+    room.started = true;
+    io.to(code).emit('gameStarted', {
+      players: room.players.map(p => ({ name: p.name, ticket: p.ticket }))
+    });
+    console.log('गेम सुरु:', code);
+  });
 
-// ===== विजेता घोषणा =====
-socket.on('winner', ({ type, name }) => {
-  const msg = document.getElementById('gameMsg');
-  msg.textContent = `🎉 ${type} जित्नुभयो: ${name}`;
-  msg.style.color = '#38ef7d';
-  msg.style.fontSize = '1.2rem';
-
-  if (type.includes('फुल हाउस')) {
-    const btn = document.getElementById('fullBtn');
-    if (btn) {
-      btn.textContent = `🏆 फुल हाउस: ${name}`;
-      btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
-      btn.style.color = '#fff';
-      btn.disabled = true;
+  // ===== नम्बर कल (होस्टले) =====
+  socket.on('callNumber', ({ code }) => {
+    const room = rooms[code];
+    if (!room || room.hostId !== socket.id) return;
+    if (room.gameOver) return;
+    if (room.allNumbers.length === 0) {
+      io.to(code).emit('gameOver', { message: 'सबै नम्बर निकालिए' });
+      return;
     }
-  } else if (type.includes('कर्नर')) {
-    const btn = document.getElementById('cornerBtn');
-    if (btn) {
-      btn.textContent = `🥈 कर्नर: ${name}`;
-      btn.style.background = 'linear-gradient(135deg, #38ef7d, #11998e)';
-      btn.style.color = '#fff';
-      btn.disabled = true;
+    const idx = Math.floor(Math.random() * room.allNumbers.length);
+    const num = room.allNumbers.splice(idx, 1)[0];
+    room.calledNumbers.push(num);
+    io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
+  });
+
+  // ===== जित दाबी =====
+  socket.on('claimWin', ({ code, type, markedNumbers }) => {
+    const room = rooms[code];
+    if (!room || room.gameOver) return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    const playerNums = player.ticket.flat().filter(n => n !== null);
+    const calledSet = new Set(room.calledNumbers);
+    const valid = markedNumbers.every(n => calledSet.has(n) && playerNums.includes(n));
+    if (!valid) return socket.emit('claimResult', { success: false, message: 'अवैध दाबी' });
+
+    // ===== फुल हाउस =====
+    if (type === 'full') {
+      if (room.winners.full) {
+        return socket.emit('claimResult', { success: false, message: 'फुल हाउस पहिले नै जितियो' });
+      }
+      if (playerNums.every(n => markedNumbers.includes(n))) {
+        room.winners.full = player.name;
+        io.to(code).emit('winner', { type: 'फुल हाउस (विजेता)', name: player.name });
+        console.log(`फुल हाउस विजेता: ${player.name} (रुम ${code})`);
+        checkGameOver(room, code);
+      } else {
+        socket.emit('claimResult', { success: false, message: 'सबै नम्बर मिलेनन्' });
+      }
     }
-  }
 
-  playCelebration();
-
-  setTimeout(() => {
-    announceWinner(type, name);
-  }, 1200);
-
-  showBigAnnouncement(`🎉 ${type} जित्यो: ${name}`);
-});
-
-socket.on('gameOver', ({ message }) => {
-  if (autoRunning) autoToggle();
-  const msg = document.getElementById('gameMsg');
-  msg.textContent = message;
-  msg.style.color = '#ffd700';
-  msg.style.whiteSpace = 'pre-line';
-  msg.style.fontSize = '1.1rem';
-
-  playCelebration();
-
-  setTimeout(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance('Game Over!');
-      utter.lang = 'en-IN';
-      utter.rate = 0.9;
-      utter.pitch = 1.0;
-      window.speechSynthesis.speak(utter);
+    // ===== कर्नर =====
+    else if (type === 'corner') {
+      if (room.winners.corner) {
+        return socket.emit('claimResult', { success: false, message: 'कर्नर पहिले नै जितियो' });
+      }
+      if (room.winners.full === player.name) {
+        return socket.emit('claimResult', {
+          success: false,
+          message: 'तपाईं विजेता भइसक्नुभयो — अर्को व्यक्तिले कर्नर जित्नुपर्छ'
+        });
+      }
+      const corners = getCorners(player.ticket);
+      if (corners.every(n => markedNumbers.includes(n))) {
+        room.winners.corner = player.name;
+        io.to(code).emit('winner', { type: 'कर्नर (दोस्रो)', name: player.name });
+        console.log(`कर्नर विजेता: ${player.name} (रुम ${code})`);
+        checkGameOver(room, code);
+      } else {
+        socket.emit('claimResult', { success: false, message: 'कर्नरका ४ नम्बर मिलेनन्' });
+      }
     }
-  }, 1000);
+  });
 
-  showBigAnnouncement('🏁 खेल समाप्त!');
+  // ===== डिस्कनेक्ट =====
+  socket.on('disconnect', () => {
+    for (const code in rooms) {
+      const room = rooms[code];
+      const idx = room.players.findIndex(p => p.id === socket.id);
+      if (idx !== -1) {
+        const name = room.players[idx].name;
+        room.players.splice(idx, 1);
+        if (room.players.length === 0) {
+          delete rooms[code];
+        } else {
+          if (room.hostId === socket.id) {
+            room.hostId = room.players[0].id;
+            room.players[0].isHost = true;
+          }
+          io.to(code).emit('playerList', room.players.map(p => ({ name: p.name, ticket: p.ticket })));
+          io.to(code).emit('playerLeft', { name });
+        }
+      }
+    }
+  });
 });
 
-socket.on('claimResult', ({ success, message }) => {
-  if (!success) {
-    const msg = document.getElementById('gameMsg');
-    msg.textContent = '❌ ' + message;
-    msg.style.color = '#ff6b6b';
-  }
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`सर्भर चल्दैछ पोर्ट ${PORT} मा`);
 });
-
-function showBigAnnouncement(text) {
-  const div = document.createElement('div');
-  div.className = 'big-announcement';
-  div.textContent = text;
-  document.body.appendChild(div);
-  setTimeout(() => div.remove(), 5000);
-}

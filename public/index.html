@@ -9,33 +9,45 @@
 <body>
 <h1>🎯 नम्बर मेला</h1>
 
-<div id="lobby" class="card">
-  <h2>खेलमा सामेल हुनुहोस्</h2>
-  <input id="playerName" placeholder="तपाईंको नाम" maxlength="15">
-
-  <button onclick="showHostLogin()">🎩 होस्ट लगइन (रुम बनाउन)</button>
-
-  <div id="hostLogin" style="display:none">
-    <input id="hostPassword" placeholder="होस्ट पासवर्ड" type="password">
-    <button onclick="createRoom()">नयाँ रुम बनाउनुहोस्</button>
-  </div>
-
+<!-- ===== पहिलो पेज: होस्ट वा खेलाडी छान्ने ===== -->
+<div id="landing" class="card">
+  <h2>स्वागत छ!</h2>
+  <button onclick="showHostLogin()">🎩 होस्ट लगइन</button>
   <hr>
-  <h3>वा रुम जोडिनुहोस्</h3>
-  <input id="roomCode" placeholder="रुम कोड" maxlength="4" style="text-transform:uppercase">
-  <button onclick="joinRoom()">रुम जोडिनुहोस्</button>
-  <div id="lobbyMsg" class="msg"></div>
+  <h3>वा खेल हेर्नुहोस्</h3>
+  <input id="viewRoomCode" placeholder="रुम कोड" maxlength="4" style="text-transform:uppercase">
+  <button onclick="viewGame()">👀 खेल हेर्नुहोस्</button>
+  <div id="landingMsg" class="msg"></div>
 </div>
 
-<div id="waiting" class="card" style="display:none">
-  <h2>रुम कोड: <span id="roomCodeDisplay"></span></h2>
-  <p>यो कोड साथीहरूलाई पठाउनुहोस्</p>
-  <h3>खेलाडीहरू (<span id="playerCount">0</span>/15)</h3>
-  <ul id="playerList"></ul>
-  <button id="startBtn" onclick="startGame()" style="display:none">गेम सुरु गर्नुहोस्</button>
-  <div id="waitMsg" class="msg"></div>
+<!-- ===== होस्ट लगइन ===== -->
+<div id="hostLoginBox" class="card" style="display:none">
+  <h2>🎩 होस्ट लगइन</h2>
+  <input id="hostPassword" placeholder="होस्ट पासवर्ड" type="password">
+  <button onclick="hostLogin()">लगइन गर्नुहोस्</button>
+  <button onclick="backToLanding()" style="background:rgba(255,255,255,0.2);color:#fff">← फिर्ता</button>
+  <div id="hostLoginMsg" class="msg"></div>
 </div>
 
+<!-- ===== टिकट बनाउने (होस्ट) ===== -->
+<div id="ticketSetup" class="card" style="display:none">
+  <h2>✏️ खेलाडीहरूको नाम लेख्नुहोस्</h2>
+  <p>कम्तीमा २ जना, बढीमा १५ जना</p>
+  <div id="nameInputs"></div>
+  <button onclick="startGameWithNames()">🎮 गेम सुरु गर्नुहोस्</button>
+  <div id="setupMsg" class="msg"></div>
+</div>
+
+<!-- ===== खेलाडी नाम लेख्ने (साथीहरूको लागि - वैकल्पिक) ===== -->
+<div id="playerJoin" class="card" style="display:none">
+  <h2>🎮 खेल हेर्नुहोस्</h2>
+  <input id="playerRoomCode" placeholder="रुम कोड" maxlength="4">
+  <button onclick="joinAsViewer()">खेल हेर्नुहोस्</button>
+  <button onclick="backToLanding()" style="background:rgba(255,255,255,0.2);color:#fff">← फिर्ता</button>
+  <div id="playerJoinMsg" class="msg"></div>
+</div>
+
+<!-- ===== खेलको स्क्रिन ===== -->
 <div id="game" style="display:none">
 
   <div class="winner-banner">
@@ -63,11 +75,7 @@
       <button onclick="callNumber()">नम्बर कल गर्नुहोस्</button>
       <button onclick="autoToggle()" id="autoBtn">अटो: बन्द</button>
     </div>
-    <h3>तपाईंको टिकट</h3>
-    <div id="myTicket" class="ticket"></div>
-
     <div id="gameMsg" class="msg"></div>
-
     <h3>निकालिएका नम्बरहरू</h3>
     <div id="calledList" class="called-list"></div>
   </div>

@@ -3,30 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>नम्बर मेला</title>
+<title>Tambola</title>
 
 <!-- PWA Meta Tags -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1e3c72">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="नम्बर मेला">
+<meta name="apple-mobile-web-app-title" content="Tambola">
 
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>🎯 नम्बर मेला</h1>
+<h1>🎯 TAMBOLA</h1>
 
 <div id="landing" class="card">
   <h2>स्वागत छ!</h2>
-  <button onclick="showHostLogin()">🎩 होस्ट लगइन </button>
+  <button onclick="showHostLogin()">🇳🇵 होस्ट लगइन (रुम बनाउन)</button>
   <hr>
   <button onclick="viewGame()">👀 खेल हेर्नुहोस्</button>
   <div id="landingMsg" class="msg"></div>
 </div>
 
 <div id="hostLoginBox" class="card" style="display:none">
-  <h2>🎩 होस्ट लगइन</h2>
+  <h2>🇳🇵 होस्ट लगइन</h2>
   <input id="hostPassword" placeholder="होस्ट पासवर्ड" type="password">
   <button onclick="hostLogin()">लगइन गर्नुहोस्</button>
   <button onclick="backToLanding()" style="background:rgba(255,255,255,0.2);color:#fff">← फिर्ता</button>
@@ -68,7 +68,7 @@
       <button onclick="autoToggle()" id="autoBtn">अटो: बन्द</button>
     </div>
     <div id="gameMsg" class="msg"></div>
-    <h3>निकालिएका नम्बरहरू</h3>
+    <h3>स्वत निस्किएका नम्बरहरू</h3>
     <div id="calledList" class="called-list"></div>
   </div>
 

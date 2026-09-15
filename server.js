@@ -78,17 +78,25 @@ function checkWinners(room, code) {
       const playerNums = player.ticket.flat().filter(n => n !== null);
 
       if (playerNums.every(n => calledSet.has(n))) {
+        const ticketNo = i + 1;
+
         // यदि यही व्यक्तिले कर्नर पनि जितेको छ भने, कर्नर खाली गर्ने
         if (room.winners.corner === player.name) {
           room.winners.corner = null;
+          room.winners.cornerTicket = null;
           console.log(`🔄 कर्नर खाली (${player.name} विजेता भए)`);
         }
 
         room.winners.full = player.name;
-        io.to(code).emit('winner', { type: 'फुल हाउस (विजेता)', name: player.name });
-        console.log(`✅ फुल हाउस विजेता: ${player.name}`);
+        room.winners.fullTicket = ticketNo;
 
-        // खेल समाप्त भयो कि जाँच
+        io.to(code).emit('winner', {
+          type: 'फुल हाउस (विजेता)',
+          name: player.name,
+          ticketNo: ticketNo
+        });
+        console.log(`✅ फुल हाउस विजेता: ${player.name} (टिकट ${ticketNo})`);
+
         checkGameOver(room, code);
         return;
       }
@@ -107,9 +115,16 @@ function checkWinners(room, code) {
       if (corners.length === 0) continue;
 
       if (corners.every(n => calledSet.has(n))) {
+        const ticketNo = i + 1;
         room.winners.corner = player.name;
-        io.to(code).emit('winner', { type: 'कर्नर (दोस्रो)', name: player.name });
-        console.log(`✅ कर्नर विजेता: ${player.name}`);
+        room.winners.cornerTicket = ticketNo;
+
+        io.to(code).emit('winner', {
+          type: 'कर्नर (दोस्रो)',
+          name: player.name,
+          ticketNo: ticketNo
+        });
+        console.log(`✅ कर्नर विजेता: ${player.name} (टिकट ${ticketNo})`);
 
         checkGameOver(room, code);
         return;
@@ -120,10 +135,6 @@ function checkWinners(room, code) {
 
 // ===== खेल समाप्त जाँच =====
 function checkGameOver(room, code) {
-  // खेल समाप्त हुन्छ जब:
-  // १. फुल हाउस विजेता छ, र
-  // २. कर्नर विजेता छ, र
-  // ३. ती दुई फरक व्यक्ति हुन्
   if (
     room.winners.full &&
     room.winners.corner &&
@@ -131,7 +142,7 @@ function checkGameOver(room, code) {
   ) {
     room.gameOver = true;
     io.to(code).emit('gameOver', {
-      message: `🏁 खेल समाप्त!\n\n🏆 विजेता (फुल हाउस): ${room.winners.full}\n🥈 दोस्रो (कर्नर): ${room.winners.corner}`
+      message: `🏁 खेल समाप्त!\n\n🏆 विजेता (फुल हाउस): ${room.winners.full} (टिकट ${room.winners.fullTicket})\n🥈 दोस्रो (कर्नर): ${room.winners.corner} (टिकट ${room.winners.cornerTicket})`
     });
   }
 }
@@ -154,7 +165,7 @@ io.on('connection', (socket) => {
       allNumbers: Array.from({ length: 99 }, (_, i) => i + 1),
       started: true,
       gameOver: false,
-      winners: { corner: null, full: null }
+      winners: { corner: null, full: null, cornerTicket: null, fullTicket: null }
     };
     latestRoomCode = code;
     socket.join(code);

@@ -1,6 +1,6 @@
 {
-  "name": "नम्बर मेला - Tambola Game",
-  "short_name": "नम्बर मेला",
+  "name": "Tambola - Number Game",
+  "short_name": "Tambola",
   "description": "१५ जनासम्म खेल्न मिल्ने टम्बोला गेम",
   "start_url": "/",
   "display": "standalone",

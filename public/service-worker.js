@@ -1,4 +1,4 @@
-const CACHE_NAME = 'number-mela-v1';
+const CACHE_NAME = 'tambola-v2';
 const urlsToCache = ['/', '/index.html', '/style.css', '/script.js'];
 
 self.addEventListener('install', (event) => {

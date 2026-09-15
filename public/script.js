@@ -6,8 +6,7 @@ let autoRunning = false;
 let calledNumbers = [];
 let allPlayers = [];
 
-// ⚠️ होस्ट पासवर्ड
-const HOST_PASSWORD = 'pgpk3535';
+// पासवर्ड अब सर्भरमा छ (सुरक्षित)
 
 function showPage(id) {
   ['landing','hostLoginBox','ticketSetup','game'].forEach(x => {
@@ -26,12 +25,18 @@ function showHostLogin() {
 
 function hostLogin() {
   const pass = document.getElementById('hostPassword').value;
-  if (pass !== HOST_PASSWORD) {
-    document.getElementById('hostLoginMsg').textContent = '❌ गलत पासवर्ड!';
+  if (!pass) {
+    document.getElementById('hostLoginMsg').textContent = 'पासवर्ड लेख्नुहोस्';
     return;
   }
-  document.getElementById('hostLoginMsg').textContent = '';
-  showTicketSetup();
+  socket.emit('hostLogin', { password: pass }, (res) => {
+    if (res.success) {
+      document.getElementById('hostLoginMsg').textContent = '';
+      showTicketSetup();
+    } else {
+      document.getElementById('hostLoginMsg').textContent = res.message;
+    }
+  });
 }
 
 function showTicketSetup() {
@@ -49,7 +54,6 @@ function showTicketSetup() {
   showPage('ticketSetup');
 }
 
-// ===== गेम सुरु =====
 function startGameWithNames() {
   const names = [];
   for (let i = 1; i <= 15; i++) {
@@ -74,7 +78,6 @@ function startGameWithNames() {
   });
 }
 
-// ===== खेल हेर्ने (कोड बिना — सिधै) =====
 function viewGame() {
   socket.emit('viewLatestRoom', {}, (res) => {
     if (res.success) {
@@ -104,7 +107,6 @@ function viewGame() {
   });
 }
 
-// ===== इभेन्टहरू =====
 socket.on('playerList', (list) => {
   allPlayers = list;
   if (document.getElementById('game').style.display === 'block') {
@@ -126,7 +128,6 @@ function renderNumberBoard() {
   }
 }
 
-// ===== सबै टिकट रेन्डर (टिकट नम्बर + नाम सहित) =====
 function renderAllTickets() {
   const container = document.getElementById('allTickets');
   if (!container) return;
@@ -231,7 +232,6 @@ function playCelebration() {
   }
 }
 
-// ===== विजेता घोषणा (टिकट नम्बर सहित) =====
 function announceWinner(type, name, ticketNo) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -249,7 +249,6 @@ function announceWinner(type, name, ticketNo) {
   window.speechSynthesis.speak(utter);
 }
 
-// ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name, ticketNo }) => {
   console.log('विजेता आयो:', type, name, 'टिकट:', ticketNo);
 
@@ -264,7 +263,6 @@ socket.on('winner', ({ type, name, ticketNo }) => {
       el.textContent = name + ' (टिकट ' + ticketNo + ')';
       el.style.color = '#38ef7d';
     }
-    // यदि कर्नरमा यही नाम छ भने, खाली गर्ने
     const cornerEl = document.getElementById('cornerWinnerName');
     if (cornerEl && cornerEl.textContent.startsWith(name)) {
       cornerEl.textContent = '--';
@@ -311,4 +309,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-  }
+}

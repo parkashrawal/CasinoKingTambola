@@ -87,11 +87,13 @@ function viewGame() {
       renderAllTickets();
       if (res.winners) {
         if (res.winners.full) {
-          document.getElementById('fullWinnerName').textContent = res.winners.full;
+          const ft = res.winners.fullTicket ? ' (टिकट ' + res.winners.fullTicket + ')' : '';
+          document.getElementById('fullWinnerName').textContent = res.winners.full + ft;
           document.getElementById('fullWinnerName').style.color = '#38ef7d';
         }
         if (res.winners.corner) {
-          document.getElementById('cornerWinnerName').textContent = res.winners.corner;
+          const ct = res.winners.cornerTicket ? ' (टिकट ' + res.winners.cornerTicket + ')' : '';
+          document.getElementById('cornerWinnerName').textContent = res.winners.corner + ct;
           document.getElementById('cornerWinnerName').style.color = '#38ef7d';
         }
       }
@@ -124,7 +126,7 @@ function renderNumberBoard() {
   }
 }
 
-// ===== सबै टिकट रेन्डर (नम्बर सहित) =====
+// ===== सबै टिकट रेन्डर (टिकट नम्बर + नाम सहित) =====
 function renderAllTickets() {
   const container = document.getElementById('allTickets');
   if (!container) return;
@@ -135,7 +137,7 @@ function renderAllTickets() {
 
     const nameEl = document.createElement('div');
     nameEl.className = 'player-ticket-name';
-    nameEl.textContent = '👤 ' + player.name + ' (टिकट ' + (index + 1) + ')';
+    nameEl.textContent = '🎫 टिकट ' + (index + 1) + ' • 👤 ' + player.name;
     wrapper.appendChild(nameEl);
 
     const ticketDiv = document.createElement('div');
@@ -229,14 +231,15 @@ function playCelebration() {
   }
 }
 
-function announceWinner(type, name) {
+// ===== विजेता घोषणा (टिकट नम्बर सहित) =====
+function announceWinner(type, name, ticketNo) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   let message = '';
   if (type.includes('फुल हाउस')) {
-    message = `Congratulations ${name}! You are the winner for full house!`;
+    message = `Congratulations ${name}! Your ticket number ${ticketNo} is the winner for full house!`;
   } else if (type.includes('कर्नर')) {
-    message = `Congratulations ${name}! You got the corner!`;
+    message = `Congratulations ${name}! Your ticket number ${ticketNo} got the corner!`;
   }
   const utter = new SpeechSynthesisUtterance(message);
   utter.lang = 'en-IN';
@@ -246,30 +249,38 @@ function announceWinner(type, name) {
   window.speechSynthesis.speak(utter);
 }
 
-socket.on('winner', ({ type, name }) => {
-  console.log('विजेता आयो:', type, name);
+// ===== विजेता घोषणा =====
+socket.on('winner', ({ type, name, ticketNo }) => {
+  console.log('विजेता आयो:', type, name, 'टिकट:', ticketNo);
+
   const msg = document.getElementById('gameMsg');
-  msg.textContent = `🎉 ${type} जित्यो: ${name}`;
+  msg.textContent = `🎉 ${type} जित्नुभयो: ${name} (टिकट ${ticketNo})`;
   msg.style.color = '#38ef7d';
   msg.style.fontSize = '1.2rem';
 
   if (type.includes('फुल हाउस')) {
     const el = document.getElementById('fullWinnerName');
     if (el) {
-      el.textContent = name;
+      el.textContent = name + ' (टिकट ' + ticketNo + ')';
       el.style.color = '#38ef7d';
+    }
+    // यदि कर्नरमा यही नाम छ भने, खाली गर्ने
+    const cornerEl = document.getElementById('cornerWinnerName');
+    if (cornerEl && cornerEl.textContent.startsWith(name)) {
+      cornerEl.textContent = '--';
+      cornerEl.style.color = '#fff';
     }
   } else if (type.includes('कर्नर')) {
     const el = document.getElementById('cornerWinnerName');
     if (el) {
-      el.textContent = name;
+      el.textContent = name + ' (टिकट ' + ticketNo + ')';
       el.style.color = '#38ef7d';
     }
   }
 
   playCelebration();
-  setTimeout(() => announceWinner(type, name), 1200);
-  showBigAnnouncement(`🎉 ${type} जित्यो: ${name}`);
+  setTimeout(() => announceWinner(type, name, ticketNo), 1200);
+  showBigAnnouncement(`🎉 ${type} जित्नुभयो: ${name} (टिकट ${ticketNo})`);
 });
 
 socket.on('gameOver', ({ message }) => {

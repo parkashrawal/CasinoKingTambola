@@ -9,6 +9,9 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ⚠️ होस्ट पासवर्ड — यहाँ राख्नुहोस् (बाहिरबाट देखिँदैन)
+const HOST_PASSWORD = 'pgpk3535';
+
 const rooms = {};
 let latestRoomCode = null;
 
@@ -67,11 +70,10 @@ function getCorners(ticket) {
   return corners;
 }
 
-// ===== विजेता जाँच =====
 function checkWinners(room, code) {
   const calledSet = new Set(room.calledNumbers);
 
-  // ===== १. फुल हाउस जाँच =====
+  // फुल हाउस जाँच
   if (!room.winners.full) {
     for (let i = 0; i < room.players.length; i++) {
       const player = room.players[i];
@@ -80,7 +82,6 @@ function checkWinners(room, code) {
       if (playerNums.every(n => calledSet.has(n))) {
         const ticketNo = i + 1;
 
-        // यदि यही व्यक्तिले कर्नर पनि जितेको छ भने, कर्नर खाली गर्ने
         if (room.winners.corner === player.name) {
           room.winners.corner = null;
           room.winners.cornerTicket = null;
@@ -103,12 +104,10 @@ function checkWinners(room, code) {
     }
   }
 
-  // ===== २. कर्नर जाँच =====
+  // कर्नर जाँच
   if (!room.winners.corner) {
     for (let i = 0; i < room.players.length; i++) {
       const player = room.players[i];
-
-      // फुल हाउस जितेको व्यक्तिलाई छोड्ने
       if (room.winners.full === player.name) continue;
 
       const corners = getCorners(player.ticket);
@@ -133,7 +132,6 @@ function checkWinners(room, code) {
   }
 }
 
-// ===== खेल समाप्त जाँच =====
 function checkGameOver(room, code) {
   if (
     room.winners.full &&
@@ -149,6 +147,17 @@ function checkGameOver(room, code) {
 
 io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
+
+  // ===== होस्ट लगइन (सर्भरमा जाँच) =====
+  socket.on('hostLogin', ({ password }, callback) => {
+    if (password === HOST_PASSWORD) {
+      callback({ success: true });
+      console.log('✅ होस्ट लगइन सफल');
+    } else {
+      callback({ success: false, message: '❌ गलत पासवर्ड!' });
+      console.log('❌ होस्ट लगइन असफल');
+    }
+  });
 
   socket.on('createRoomWithNames', ({ names }, callback) => {
     const code = generateRoomCode();

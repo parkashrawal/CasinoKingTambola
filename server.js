@@ -10,7 +10,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ⚠️ होस्ट पासवर्ड — यहाँ राख्नुहोस्
-const HOST_PASSWORD = 'pgpk@3535';
+const HOST_PASSWORD = 'pgpk3535';
 
 const rooms = {};
 let latestRoomCode = null;

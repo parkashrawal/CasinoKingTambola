@@ -6,8 +6,7 @@ let autoRunning = false;
 let calledNumbers = [];
 let allPlayers = [];
 
-// पासवर्ड अब सर्भरमा छ (सुरक्षित)
-
+// ===== पेज ह्यान्डलिङ =====
 function showPage(id) {
   ['landing','hostLoginBox','ticketSetup','game'].forEach(x => {
     document.getElementById(x).style.display = 'none';
@@ -52,6 +51,7 @@ function showTicketSetup() {
   showPage('ticketSetup');
 }
 
+// ===== गेम सुरु =====
 function startGameWithNames() {
   const names = [];
   for (let i = 1; i <= 15; i++) {
@@ -76,6 +76,7 @@ function startGameWithNames() {
   });
 }
 
+// ===== खेल हेर्ने =====
 function viewGame() {
   socket.emit('viewLatestRoom', {}, (res) => {
     if (res.success) {
@@ -113,6 +114,7 @@ function viewGame() {
   });
 }
 
+// ===== इभेन्टहरू =====
 socket.on('playerList', (list) => {
   allPlayers = list;
   if (document.getElementById('game').style.display === 'block') {
@@ -166,6 +168,7 @@ function renderAllTickets() {
   });
 }
 
+// ===== नम्बर कल =====
 function callNumber() {
   if (!isHost) {
     alert('तपाईं होस्ट होइन!');
@@ -175,20 +178,10 @@ function callNumber() {
   console.log('नम्बर कल पठाइयो');
 }
 
-function callCustomNumber() {
-  if (!isHost) {
-    alert('तपाईं होस्ट होइन!');
-    return;
-  }
-  const input = document.getElementById('customNumber');
-  const num = parseInt(input.value);
-  if (isNaN(num) || num < 1 || num > 99) {
-    alert('१ देखि ९९ सम्मको नम्बर हाल्नुहोस्!');
-    return;
-  }
-  socket.emit('callCustomNumber', { code: roomCode, number: num });
-  input.value = '';
-  console.log('कस्टम नम्बर पठाइयो:', num);
+// ===== अटो नम्बर कल =====
+function callAutoNumber() {
+  if (!isHost) return;
+  socket.emit('autoCallNumber', { code: roomCode });
 }
 
 function autoToggle() {
@@ -199,8 +192,23 @@ function autoToggle() {
   } else {
     autoRunning = true;
     document.getElementById('autoBtn').textContent = 'अटो: चालु';
-    autoInterval = setInterval(callNumber, 3000);
+    // ४ सेकेन्डको फरक
+    autoInterval = setInterval(callAutoNumber, 4000);
   }
+}
+
+// ===== कस्टम नम्बर सेभ (अटोको लागि) =====
+function saveCustomNumber() {
+  if (!isHost) return;
+  const input = document.getElementById('customNumber');
+  const num = parseInt(input.value);
+  if (isNaN(num) || num < 1 || num > 99) {
+    socket.emit('setCustomNumber', { code: roomCode, number: null });
+    console.log('कस्टम नम्बर खाली');
+    return;
+  }
+  socket.emit('setCustomNumber', { code: roomCode, number: num });
+  console.log('कस्टम नम्बर सेभ:', num);
 }
 
 socket.on('numberCalled', ({ number, allCalled }) => {
@@ -221,6 +229,7 @@ socket.on('numberCalled', ({ number, allCalled }) => {
   list.prepend(s);
 });
 
+// ===== नम्बर उच्चारण =====
 function speakNumber(num) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -232,6 +241,7 @@ function speakNumber(num) {
   window.speechSynthesis.speak(utter);
 }
 
+// ===== सेलिब्रेसन सङ्गीत =====
 function playCelebration() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -254,6 +264,7 @@ function playCelebration() {
   }
 }
 
+// ===== विजेता आवाज =====
 function announceWinner(type, name, ticketNo) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -271,6 +282,7 @@ function announceWinner(type, name, ticketNo) {
   window.speechSynthesis.speak(utter);
 }
 
+// ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
   console.log('विजेता आयो:', type, name, 'टिकट:', ticketNo);
 
@@ -310,10 +322,7 @@ socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
   showBigAnnouncement(`🎉 ${type} जित्यो: ${namesText}`);
 });
 
-socket.on('customNumberError', ({ message }) => {
-  alert(message);
-});
-
+// ===== खेल समाप्त =====
 socket.on('gameOver', ({ message }) => {
   if (autoRunning) autoToggle();
   const msg = document.getElementById('gameMsg');
@@ -335,6 +344,7 @@ socket.on('gameOver', ({ message }) => {
   showBigAnnouncement('🏁 खेल समाप्त!');
 });
 
+// ===== ठूलो सन्देश =====
 function showBigAnnouncement(text) {
   const div = document.createElement('div');
   div.className = 'big-announcement';
@@ -342,4 +352,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-  }
+    }

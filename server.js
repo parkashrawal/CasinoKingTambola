@@ -10,7 +10,6 @@ const io = new Server(server, { cors: { origin: '*' } });
 app.use(express.static(path.join(__dirname, 'public')));
 
 const HOST_PASSWORD = 'pgpk3535';
-
 const rooms = {};
 let latestRoomCode = null;
 
@@ -69,76 +68,79 @@ function getCorners(ticket) {
   return corners;
 }
 
+// ===== विजेता जाँच (टिकट नम्बरले पहिचान) =====
 function checkWinners(room, code) {
   const calledSet = new Set(room.calledNumbers);
 
-  if (!room.winners.full) {
-    const fullWinners = [];
+  // ===== १. फुल हाउस =====
+  if (!room.winners.fullList) {
+    const fullTickets = [];
     for (let i = 0; i < room.players.length; i++) {
       const player = room.players[i];
       const playerNums = player.ticket.flat().filter(n => n !== null);
       if (playerNums.every(n => calledSet.has(n))) {
-        fullWinners.push({ name: player.name, ticketNo: i + 1 });
+        fullTickets.push({ ticketNo: i + 1, name: player.name });
       }
     }
 
-    if (fullWinners.length > 0) {
-      const winner = fullWinners[0];
-      room.winners.full = winner.name;
-      room.winners.fullTicket = winner.ticketNo;
-      room.winners.allFullWinners = fullWinners;
+    if (fullTickets.length > 0) {
+      room.winners.fullList = fullTickets;
+      room.winners.full = fullTickets[0].name;
+      room.winners.fullTicket = fullTickets[0].ticketNo;
 
-      if (
-        room.winners.corner === winner.name &&
-        room.winners.cornerTicket === winner.ticketNo
-      ) {
-        room.winners.corner = null;
-        room.winners.cornerTicket = null;
-        room.winners.allCornerWinners = null;
+      // यदि कर्नर पनि यही टिकटबाट थियो भने खाली गर्ने
+      if (room.winners.cornerList) {
+        const remaining = room.winners.cornerList.filter(c =>
+          !fullTickets.some(f => f.ticketNo === c.ticketNo)
+        );
+        room.winners.cornerList = remaining.length > 0 ? remaining : null;
+        if (!room.winners.cornerList) {
+          room.winners.corner = null;
+          room.winners.cornerTicket = null;
+        }
       }
 
       io.to(code).emit('winner', {
         type: 'फुल हाउस (विजेता)',
-        name: winner.name,
-        ticketNo: winner.ticketNo,
-        allWinners: fullWinners
+        winners: fullTickets
       });
-      console.log(`✅ फुल हाउस: ${winner.name} (टिकट ${winner.ticketNo})`);
+      console.log(`✅ फुल हाउस: ${fullTickets.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
+
       checkGameOver(room, code);
       return;
     }
   }
 
-  if (!room.winners.corner) {
-    const cornerWinners = [];
+  // ===== २. कर्नर =====
+  if (!room.winners.cornerList) {
+    const cornerTickets = [];
     for (let i = 0; i < room.players.length; i++) {
       const player = room.players[i];
-      if (
-        room.winners.full === player.name &&
-        room.winners.fullTicket === (i + 1)
-      ) continue;
+      const ticketNo = i + 1;
+
+      // यदि यही टिकट फुल हाउस जितिसकेको छ भने छोड्ने
+      if (room.winners.fullList &&
+        room.winners.fullList.some(f => f.ticketNo === ticketNo)) continue;
 
       const corners = getCorners(player.ticket);
       if (corners.length === 0) continue;
 
       if (corners.every(n => calledSet.has(n))) {
-        cornerWinners.push({ name: player.name, ticketNo: i + 1 });
+        cornerTickets.push({ ticketNo: ticketNo, name: player.name });
       }
     }
 
-    if (cornerWinners.length > 0) {
-      const winner = cornerWinners[0];
-      room.winners.corner = winner.name;
-      room.winners.cornerTicket = winner.ticketNo;
-      room.winners.allCornerWinners = cornerWinners;
+    if (cornerTickets.length > 0) {
+      room.winners.cornerList = cornerTickets;
+      room.winners.corner = cornerTickets[0].name;
+      room.winners.cornerTicket = cornerTickets[0].ticketNo;
 
       io.to(code).emit('winner', {
         type: 'कर्नर (दोस्रो)',
-        name: winner.name,
-        ticketNo: winner.ticketNo,
-        allWinners: cornerWinners
+        winners: cornerTickets
       });
-      console.log(`✅ कर्नर: ${winner.name} (टिकट ${winner.ticketNo})`);
+      console.log(`✅ कर्नर: ${cornerTickets.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
+
       checkGameOver(room, code);
       return;
     }
@@ -146,24 +148,15 @@ function checkWinners(room, code) {
 }
 
 function checkGameOver(room, code) {
-  if (
-    room.winners.full &&
-    room.winners.corner &&
-    !(room.winners.full === room.winners.corner &&
-      room.winners.fullTicket === room.winners.cornerTicket)
-  ) {
-    room.gameOver = true;
-    const fullText = room.winners.allFullWinners
-      ? room.winners.allFullWinners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ')
-      : `${room.winners.full} (टिकट ${room.winners.fullTicket})`;
-    const cornerText = room.winners.allCornerWinners
-      ? room.winners.allCornerWinners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ')
-      : `${room.winners.corner} (टिकट ${room.winners.cornerTicket})`;
+  if (!room.winners.fullList || !room.winners.cornerList) return;
 
-    io.to(code).emit('gameOver', {
-      message: `🏁 खेल समाप्त!\n\n🏆 विजेता (फुल हाउस): ${fullText}\n🥈 दोस्रो (कर्नर): ${cornerText}`
-    });
-  }
+  const fullText = room.winners.fullList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
+  const cornerText = room.winners.cornerList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
+
+  room.gameOver = true;
+  io.to(code).emit('gameOver', {
+    message: `🏁 खेल समाप्त!\n\n🏆 विजेता (फुल हाउस): ${fullText}\n🥈 दोस्रो (कर्नर): ${cornerText}`
+  });
 }
 
 io.on('connection', (socket) => {
@@ -191,9 +184,9 @@ io.on('connection', (socket) => {
       gameOver: false,
       customNumber: null,
       winners: {
-        corner: null, full: null,
-        cornerTicket: null, fullTicket: null,
-        allFullWinners: null, allCornerWinners: null
+        fullList: null, cornerList: null,
+        full: null, fullTicket: null,
+        corner: null, cornerTicket: null
       }
     };
     latestRoomCode = code;
@@ -277,7 +270,6 @@ io.on('connection', (socket) => {
       return;
     }
     room.customNumber = num;
-    console.log(`🏁 खेल रोक्नुहोस् — नम्बर सेभ: ${num}`);
   });
 
   socket.on('disconnect', () => {

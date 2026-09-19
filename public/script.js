@@ -6,7 +6,6 @@ let autoRunning = false;
 let calledNumbers = [];
 let allPlayers = [];
 
-// ===== पेज ह्यान्डलिङ =====
 function showPage(id) {
   ['landing','hostLoginBox','ticketSetup','game'].forEach(x => {
     document.getElementById(x).style.display = 'none';
@@ -14,13 +13,8 @@ function showPage(id) {
   document.getElementById(id).style.display = 'block';
 }
 
-function backToLanding() {
-  showPage('landing');
-}
-
-function showHostLogin() {
-  showPage('hostLoginBox');
-}
+function backToLanding() { showPage('landing'); }
+function showHostLogin() { showPage('hostLoginBox'); }
 
 function hostLogin() {
   const pass = document.getElementById('hostPassword').value;
@@ -51,7 +45,6 @@ function showTicketSetup() {
   showPage('ticketSetup');
 }
 
-// ===== गेम सुरु =====
 function startGameWithNames() {
   const names = [];
   for (let i = 1; i <= 15; i++) {
@@ -69,14 +62,12 @@ function startGameWithNames() {
       document.getElementById('hostPanel').style.display = 'block';
       showPage('game');
       showBigAnnouncement('गेम सुरु भयो!');
-      console.log('रुम कोड:', roomCode);
     } else {
       document.getElementById('setupMsg').textContent = res.message;
     }
   });
 }
 
-// ===== खेल हेर्ने =====
 function viewGame() {
   socket.emit('viewLatestRoom', {}, (res) => {
     if (res.success) {
@@ -114,12 +105,9 @@ function viewGame() {
   });
 }
 
-// ===== इभेन्टहरू =====
 socket.on('playerList', (list) => {
   allPlayers = list;
-  if (document.getElementById('game').style.display === 'block') {
-    renderAllTickets();
-  }
+  if (document.getElementById('game').style.display === 'block') renderAllTickets();
 });
 
 function renderNumberBoard() {
@@ -143,12 +131,10 @@ function renderAllTickets() {
   allPlayers.forEach((player, index) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'player-ticket-wrapper';
-
     const nameEl = document.createElement('div');
     nameEl.className = 'player-ticket-name';
     nameEl.textContent = '🎫 टिकट ' + (index + 1) + ' • 👤 ' + player.name;
     wrapper.appendChild(nameEl);
-
     const ticketDiv = document.createElement('div');
     ticketDiv.className = 'ticket small';
     player.ticket.forEach(row => {
@@ -168,17 +154,11 @@ function renderAllTickets() {
   });
 }
 
-// ===== नम्बर कल =====
 function callNumber() {
-  if (!isHost) {
-    alert('तपाईं होस्ट होइन!');
-    return;
-  }
+  if (!isHost) return alert('तपाईं होस्ट होइन!');
   socket.emit('callNumber', { code: roomCode });
-  console.log('नम्बर कल पठाइयो');
 }
 
-// ===== अटो नम्बर कल =====
 function callAutoNumber() {
   if (!isHost) return;
   socket.emit('autoCallNumber', { code: roomCode });
@@ -192,34 +172,29 @@ function autoToggle() {
   } else {
     autoRunning = true;
     document.getElementById('autoBtn').textContent = 'अटो: चालु';
-    // ४ सेकेन्डको फरक
     autoInterval = setInterval(callAutoNumber, 4000);
   }
 }
 
-// ===== कस्टम नम्बर सेभ (अटोको लागि) =====
+// ===== खेल रोक्नुहोस् — कस्टम नम्बर सेभ =====
 function saveCustomNumber() {
   if (!isHost) return;
   const input = document.getElementById('customNumber');
   const num = parseInt(input.value);
   if (isNaN(num) || num < 1 || num > 99) {
     socket.emit('setCustomNumber', { code: roomCode, number: null });
-    console.log('कस्टम नम्बर खाली');
     return;
   }
   socket.emit('setCustomNumber', { code: roomCode, number: num });
-  console.log('कस्टम नम्बर सेभ:', num);
+  console.log('🏁 खेल रोक्नुहोस् — नम्बर सेभ:', num);
 }
 
 socket.on('numberCalled', ({ number, allCalled }) => {
   calledNumbers = allCalled;
   document.getElementById('currentNumber').textContent = number;
-
   speakNumber(number);
-
   const boardCell = document.getElementById('num-' + number);
   if (boardCell) boardCell.classList.add('called');
-
   document.querySelectorAll('#allTickets .cell').forEach(c => {
     if (c.dataset.num == number) c.classList.add('called');
   });
@@ -229,19 +204,15 @@ socket.on('numberCalled', ({ number, allCalled }) => {
   list.prepend(s);
 });
 
-// ===== नम्बर उच्चारण =====
 function speakNumber(num) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(num.toString());
   utter.lang = 'en-IN';
   utter.rate = 1.0;
-  utter.pitch = 1.0;
-  utter.volume = 1.0;
   window.speechSynthesis.speak(utter);
 }
 
-// ===== सेलिब्रेसन सङ्गीत =====
 function playCelebration() {
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -259,12 +230,9 @@ function playCelebration() {
       osc.start(start);
       osc.stop(start + 0.4);
     });
-  } catch (e) {
-    console.log('आवाज बजाउन सकिएन');
-  }
+  } catch (e) {}
 }
 
-// ===== विजेता आवाज =====
 function announceWinner(type, name, ticketNo) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
@@ -278,14 +246,10 @@ function announceWinner(type, name, ticketNo) {
   utter.lang = 'en-IN';
   utter.rate = 0.9;
   utter.pitch = 1.2;
-  utter.volume = 1.0;
   window.speechSynthesis.speak(utter);
 }
 
-// ===== विजेता घोषणा =====
 socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
-  console.log('विजेता आयो:', type, name, 'टिकट:', ticketNo);
-
   const msg = document.getElementById('gameMsg');
   msg.textContent = `🎉 ${type} जित्यो: ${name} (टिकट ${ticketNo})`;
   msg.style.color = '#38ef7d';
@@ -304,11 +268,6 @@ socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
       el.textContent = namesText;
       el.style.color = '#38ef7d';
     }
-    const cornerEl = document.getElementById('cornerWinnerName');
-    if (cornerEl && cornerEl.textContent.includes(name)) {
-      cornerEl.textContent = '--';
-      cornerEl.style.color = '#fff';
-    }
   } else if (type.includes('कर्नर')) {
     const el = document.getElementById('cornerWinnerName');
     if (el) {
@@ -322,7 +281,6 @@ socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
   showBigAnnouncement(`🎉 ${type} जित्यो: ${namesText}`);
 });
 
-// ===== खेल समाप्त =====
 socket.on('gameOver', ({ message }) => {
   if (autoRunning) autoToggle();
   const msg = document.getElementById('gameMsg');
@@ -331,20 +289,9 @@ socket.on('gameOver', ({ message }) => {
   msg.style.whiteSpace = 'pre-line';
   msg.style.fontSize = '1.1rem';
   playCelebration();
-  setTimeout(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance('Game Over!');
-      utter.lang = 'en-IN';
-      utter.rate = 0.9;
-      utter.pitch = 1.0;
-      window.speechSynthesis.speak(utter);
-    }
-  }, 1000);
   showBigAnnouncement('🏁 खेल समाप्त!');
 });
 
-// ===== ठूलो सन्देश =====
 function showBigAnnouncement(text) {
   const div = document.createElement('div');
   div.className = 'big-announcement';
@@ -352,4 +299,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-    }
+}

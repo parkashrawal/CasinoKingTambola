@@ -9,7 +9,6 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ⚠️ होस्ट पासवर्ड — यहाँ राख्नुहोस्
 const HOST_PASSWORD = 'pgpk3535';
 
 const rooms = {};
@@ -70,7 +69,6 @@ function getCorners(ticket) {
   return corners;
 }
 
-// ===== विजेता जाँच (टिकट नम्बर सहित) =====
 function checkWinners(room, code) {
   const calledSet = new Set(room.calledNumbers);
 
@@ -172,11 +170,8 @@ io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
 
   socket.on('hostLogin', ({ password }, callback) => {
-    if (password === HOST_PASSWORD) {
-      callback({ success: true });
-    } else {
-      callback({ success: false, message: '❌ गलत पासवर्ड!' });
-    }
+    if (password === HOST_PASSWORD) callback({ success: true });
+    else callback({ success: false, message: '❌ गलत पासवर्ड!' });
   });
 
   socket.on('createRoomWithNames', ({ names }, callback) => {
@@ -273,7 +268,6 @@ io.on('connection', (socket) => {
     checkWinners(room, code);
   });
 
-  // ===== खेल रोक्नुहोस् — कस्टम नम्बर सेभ =====
   socket.on('setCustomNumber', ({ code, number }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;

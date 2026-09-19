@@ -88,7 +88,7 @@ function checkWinners(room, code) {
       room.winners.full = fullTickets[0].name;
       room.winners.fullTicket = fullTickets[0].ticketNo;
 
-      // यदि कर्नर पनि यही टिकटबाट थियो भने खाली गर्ने
+      // यदि कर्नर पहिले नै यही टिकटबाट जितिएको थियो भने हटाउने
       if (room.winners.cornerList) {
         const remaining = room.winners.cornerList.filter(c =>
           !fullTickets.some(f => f.ticketNo === c.ticketNo)
@@ -114,13 +114,16 @@ function checkWinners(room, code) {
   // ===== २. कर्नर =====
   if (!room.winners.cornerList) {
     const cornerTickets = [];
+    const fullTicketNos = room.winners.fullList
+      ? room.winners.fullList.map(f => f.ticketNo)
+      : [];
+
     for (let i = 0; i < room.players.length; i++) {
       const player = room.players[i];
       const ticketNo = i + 1;
 
-      // यदि यही टिकट फुल हाउस जितिसकेको छ भने छोड्ने
-      if (room.winners.fullList &&
-        room.winners.fullList.some(f => f.ticketNo === ticketNo)) continue;
+      // ⚠️ यदि यही टिकट फुल हाउस जितिसकेको छ भने छोड्ने
+      if (fullTicketNos.includes(ticketNo)) continue;
 
       const corners = getCorners(player.ticket);
       if (corners.length === 0) continue;
@@ -147,8 +150,15 @@ function checkWinners(room, code) {
   }
 }
 
+// ===== खेल समाप्त जाँच =====
 function checkGameOver(room, code) {
   if (!room.winners.fullList || !room.winners.cornerList) return;
+
+  // यदि एउटै टिकटले दुवै जित्यो भने खेल समाप्त हुँदैन
+  const sameTicket = room.winners.fullList.some(f =>
+    room.winners.cornerList.some(c => c.ticketNo === f.ticketNo)
+  );
+  if (sameTicket) return;
 
   const fullText = room.winners.fullList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
   const cornerText = room.winners.cornerList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
@@ -162,11 +172,13 @@ function checkGameOver(room, code) {
 io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
 
+  // ===== होस्ट लगइन =====
   socket.on('hostLogin', ({ password }, callback) => {
     if (password === HOST_PASSWORD) callback({ success: true });
     else callback({ success: false, message: '❌ गलत पासवर्ड!' });
   });
 
+  // ===== रुम बनाउने =====
   socket.on('createRoomWithNames', ({ names }, callback) => {
     const code = generateRoomCode();
     const players = names.map((name, i) => ({
@@ -193,8 +205,10 @@ io.on('connection', (socket) => {
     socket.join(code);
     callback({ success: true, code });
     io.to(code).emit('playerList', players.map(p => ({ name: p.name, ticket: p.ticket })));
+    console.log('रुम बन्यो:', code);
   });
 
+  // ===== खेल हेर्ने =====
   socket.on('viewLatestRoom', ({}, callback) => {
     if (!latestRoomCode || !rooms[latestRoomCode]) {
       return callback({ success: false, message: 'कुनै खेल भेटिएन' });
@@ -211,6 +225,7 @@ io.on('connection', (socket) => {
     });
   });
 
+  // ===== र्यान्डम नम्बर कल =====
   socket.on('callNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -233,9 +248,11 @@ io.on('connection', (socket) => {
 
     room.calledNumbers.push(num);
     io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
+    console.log(`🎲 नम्बर कल: ${num}`);
     checkWinners(room, code);
   });
 
+  // ===== अटो नम्बर कल =====
   socket.on('autoCallNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -258,9 +275,11 @@ io.on('connection', (socket) => {
 
     room.calledNumbers.push(num);
     io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
+    console.log(`🎲 अटो कल: ${num}`);
     checkWinners(room, code);
   });
 
+  // ===== कस्टम नम्बर सेभ =====
   socket.on('setCustomNumber', ({ code, number }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -270,6 +289,7 @@ io.on('connection', (socket) => {
       return;
     }
     room.customNumber = num;
+    console.log(`🏁 नम्बर सेभ: ${num}`);
   });
 
   socket.on('disconnect', () => {

@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tambola">
 
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 <h1>🇳🇵 TAMBOLA</h1>
@@ -69,7 +69,7 @@
       <h4>🏁 खेल रोक्नुहोस्</h4>
       <input id="customNumber" type="number" min="1" max="99" placeholder="नम्बर (१-९९)" onchange="saveCustomNumber()">
       <p style="font-size:0.8rem;color:#ffd700;margin-top:5px;">
-        💡 नम्बर हालेर खेल रोक्नुहोस् थिच्नुहोस् — अटोमा पहिले त्यही नम्बर आउँछ
+        💡 नम्बर हालेपछि अटोमा पहिले त्यही नम्बर आउँछ
       </p>
     </div>
     <div id="gameMsg" class="msg"></div>
@@ -85,12 +85,12 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="script.js?v=4"></script>
+<script src="script.js?v=5"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js?v=4')
+      navigator.serviceWorker.register('service-worker.js?v=5')
         .then((reg) => console.log('Service Worker चल्यो:', reg.scope))
         .catch((err) => console.log('Service Worker error:', err));
     });

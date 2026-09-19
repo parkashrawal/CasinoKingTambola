@@ -70,11 +70,10 @@ function getCorners(ticket) {
   return corners;
 }
 
-// ===== विजेता जाँच (सबै खेलाडी) =====
+// ===== विजेता जाँच (टिकट नम्बर सहित) =====
 function checkWinners(room, code) {
   const calledSet = new Set(room.calledNumbers);
 
-  // ===== फुल हाउस जाँच =====
   if (!room.winners.full) {
     const fullWinners = [];
     for (let i = 0; i < room.players.length; i++) {
@@ -86,56 +85,62 @@ function checkWinners(room, code) {
     }
 
     if (fullWinners.length > 0) {
-      room.winners.full = fullWinners[0].name;
-      room.winners.fullTicket = fullWinners[0].ticketNo;
+      const winner = fullWinners[0];
+      room.winners.full = winner.name;
+      room.winners.fullTicket = winner.ticketNo;
       room.winners.allFullWinners = fullWinners;
 
-      io.to(code).emit('winner', {
-        type: 'फुल हाउस (विजेता)',
-        name: fullWinners[0].name,
-        ticketNo: fullWinners[0].ticketNo,
-        allWinners: fullWinners
-      });
-      console.log(`✅ फुल हाउस: ${fullWinners.map(w => w.name + ' (' + w.ticketNo + ')').join(', ')}`);
-
-      if (fullWinners.some(w => w.name === room.winners.corner)) {
+      if (
+        room.winners.corner === winner.name &&
+        room.winners.cornerTicket === winner.ticketNo
+      ) {
         room.winners.corner = null;
         room.winners.cornerTicket = null;
         room.winners.allCornerWinners = null;
-        console.log(`🔄 कर्नर खाली`);
       }
 
+      io.to(code).emit('winner', {
+        type: 'फुल हाउस (विजेता)',
+        name: winner.name,
+        ticketNo: winner.ticketNo,
+        allWinners: fullWinners
+      });
+      console.log(`✅ फुल हाउस: ${winner.name} (टिकट ${winner.ticketNo})`);
       checkGameOver(room, code);
       return;
     }
   }
 
-  // ===== कर्नर जाँच =====
   if (!room.winners.corner) {
     const cornerWinners = [];
     for (let i = 0; i < room.players.length; i++) {
       const player = room.players[i];
-      if (room.winners.full === player.name) continue;
+      if (
+        room.winners.full === player.name &&
+        room.winners.fullTicket === (i + 1)
+      ) continue;
+
       const corners = getCorners(player.ticket);
       if (corners.length === 0) continue;
+
       if (corners.every(n => calledSet.has(n))) {
         cornerWinners.push({ name: player.name, ticketNo: i + 1 });
       }
     }
 
     if (cornerWinners.length > 0) {
-      room.winners.corner = cornerWinners[0].name;
-      room.winners.cornerTicket = cornerWinners[0].ticketNo;
+      const winner = cornerWinners[0];
+      room.winners.corner = winner.name;
+      room.winners.cornerTicket = winner.ticketNo;
       room.winners.allCornerWinners = cornerWinners;
 
       io.to(code).emit('winner', {
         type: 'कर्नर (दोस्रो)',
-        name: cornerWinners[0].name,
-        ticketNo: cornerWinners[0].ticketNo,
+        name: winner.name,
+        ticketNo: winner.ticketNo,
         allWinners: cornerWinners
       });
-      console.log(`✅ कर्नर: ${cornerWinners.map(w => w.name + ' (' + w.ticketNo + ')').join(', ')}`);
-
+      console.log(`✅ कर्नर: ${winner.name} (टिकट ${winner.ticketNo})`);
       checkGameOver(room, code);
       return;
     }
@@ -143,7 +148,12 @@ function checkWinners(room, code) {
 }
 
 function checkGameOver(room, code) {
-  if (room.winners.full && room.winners.corner && room.winners.full !== room.winners.corner) {
+  if (
+    room.winners.full &&
+    room.winners.corner &&
+    !(room.winners.full === room.winners.corner &&
+      room.winners.fullTicket === room.winners.cornerTicket)
+  ) {
     room.gameOver = true;
     const fullText = room.winners.allFullWinners
       ? room.winners.allFullWinners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ')
@@ -161,17 +171,14 @@ function checkGameOver(room, code) {
 io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
 
-  // ===== होस्ट लगइन =====
   socket.on('hostLogin', ({ password }, callback) => {
     if (password === HOST_PASSWORD) {
       callback({ success: true });
-      console.log('✅ होस्ट लगइन सफल');
     } else {
       callback({ success: false, message: '❌ गलत पासवर्ड!' });
     }
   });
 
-  // ===== रुम बनाउने =====
   socket.on('createRoomWithNames', ({ names }, callback) => {
     const code = generateRoomCode();
     const players = names.map((name, i) => ({
@@ -198,10 +205,8 @@ io.on('connection', (socket) => {
     socket.join(code);
     callback({ success: true, code });
     io.to(code).emit('playerList', players.map(p => ({ name: p.name, ticket: p.ticket })));
-    console.log('रुम बन्यो:', code);
   });
 
-  // ===== खेल हेर्ने =====
   socket.on('viewLatestRoom', ({}, callback) => {
     if (!latestRoomCode || !rooms[latestRoomCode]) {
       return callback({ success: false, message: 'कुनै खेल भेटिएन' });
@@ -218,7 +223,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // ===== र्यान्डम नम्बर कल =====
   socket.on('callNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -229,7 +233,6 @@ io.on('connection', (socket) => {
     }
 
     let num;
-    // कस्टम नम्बर पहिले
     if (room.customNumber && !room.calledNumbers.includes(room.customNumber)) {
       num = room.customNumber;
       room.customNumber = null;
@@ -242,11 +245,9 @@ io.on('connection', (socket) => {
 
     room.calledNumbers.push(num);
     io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
-    console.log(`🎲 नम्बर कल: ${num} (रुम ${code})`);
     checkWinners(room, code);
   });
 
-  // ===== अटो नम्बर कल (कस्टम नम्बर सहित) =====
   socket.on('autoCallNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -257,7 +258,6 @@ io.on('connection', (socket) => {
     }
 
     let num;
-    // कस्टम नम्बर पहिले
     if (room.customNumber && !room.calledNumbers.includes(room.customNumber)) {
       num = room.customNumber;
       room.customNumber = null;
@@ -270,22 +270,20 @@ io.on('connection', (socket) => {
 
     room.calledNumbers.push(num);
     io.to(code).emit('numberCalled', { number: num, allCalled: room.calledNumbers });
-    console.log(`🎲 अटो कल: ${num} (रुम ${code})`);
     checkWinners(room, code);
   });
 
-  // ===== कस्टम नम्बर सेभ (अटोको लागि) =====
+  // ===== खेल रोक्नुहोस् — कस्टम नम्बर सेभ =====
   socket.on('setCustomNumber', ({ code, number }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
     const num = parseInt(number);
     if (isNaN(num) || num < 1 || num > 99) {
       room.customNumber = null;
-      console.log('कस्टम नम्बर खाली');
       return;
     }
     room.customNumber = num;
-    console.log(`💾 कस्टम नम्बर सेभ: ${num} (रुम ${code})`);
+    console.log(`🏁 खेल रोक्नुहोस् — नम्बर सेभ: ${num}`);
   });
 
   socket.on('disconnect', () => {

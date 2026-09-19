@@ -176,7 +176,6 @@ function autoToggle() {
   }
 }
 
-// ===== खेल रोक्नुहोस् — कस्टम नम्बर सेभ =====
 function saveCustomNumber() {
   if (!isHost) return;
   const input = document.getElementById('customNumber');
@@ -299,4 +298,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-}
+                            }

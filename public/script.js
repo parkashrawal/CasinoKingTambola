@@ -79,22 +79,14 @@ function viewGame() {
       renderNumberBoard();
       renderAllTickets();
       if (res.winners) {
-        if (res.winners.allFullWinners && res.winners.allFullWinners.length > 0) {
-          const text = res.winners.allFullWinners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
+        if (res.winners.fullList && res.winners.fullList.length > 0) {
+          const text = res.winners.fullList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
           document.getElementById('fullWinnerName').textContent = text;
           document.getElementById('fullWinnerName').style.color = '#38ef7d';
-        } else if (res.winners.full) {
-          const ft = res.winners.fullTicket ? ' (टिकट ' + res.winners.fullTicket + ')' : '';
-          document.getElementById('fullWinnerName').textContent = res.winners.full + ft;
-          document.getElementById('fullWinnerName').style.color = '#38ef7d';
         }
-        if (res.winners.allCornerWinners && res.winners.allCornerWinners.length > 0) {
-          const text = res.winners.allCornerWinners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
+        if (res.winners.cornerList && res.winners.cornerList.length > 0) {
+          const text = res.winners.cornerList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
           document.getElementById('cornerWinnerName').textContent = text;
-          document.getElementById('cornerWinnerName').style.color = '#38ef7d';
-        } else if (res.winners.corner) {
-          const ct = res.winners.cornerTicket ? ' (टिकट ' + res.winners.cornerTicket + ')' : '';
-          document.getElementById('cornerWinnerName').textContent = res.winners.corner + ct;
           document.getElementById('cornerWinnerName').style.color = '#38ef7d';
         }
       }
@@ -185,7 +177,6 @@ function saveCustomNumber() {
     return;
   }
   socket.emit('setCustomNumber', { code: roomCode, number: num });
-  console.log('🏁 खेल रोक्नुहोस् — नम्बर सेभ:', num);
 }
 
 socket.on('numberCalled', ({ number, allCalled }) => {
@@ -248,18 +239,17 @@ function announceWinner(type, name, ticketNo) {
   window.speechSynthesis.speak(utter);
 }
 
-socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
+socket.on('winner', ({ type, winners }) => {
   const msg = document.getElementById('gameMsg');
-  msg.textContent = `🎉 ${type} जित्यो: ${name} (टिकट ${ticketNo})`;
-  msg.style.color = '#38ef7d';
-  msg.style.fontSize = '1.2rem';
 
   let namesText = '';
-  if (allWinners && allWinners.length > 0) {
-    namesText = allWinners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
-  } else {
-    namesText = `${name} (टिकट ${ticketNo})`;
+  if (winners && winners.length > 0) {
+    namesText = winners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
   }
+
+  msg.textContent = `🎉 ${type}: ${namesText}`;
+  msg.style.color = '#38ef7d';
+  msg.style.fontSize = '1.1rem';
 
   if (type.includes('फुल हाउस')) {
     const el = document.getElementById('fullWinnerName');
@@ -276,8 +266,13 @@ socket.on('winner', ({ type, name, ticketNo, allWinners }) => {
   }
 
   playCelebration();
-  setTimeout(() => announceWinner(type, name, ticketNo), 1200);
-  showBigAnnouncement(`🎉 ${type} जित्यो: ${namesText}`);
+
+  if (winners && winners.length > 0) {
+    const first = winners[0];
+    setTimeout(() => announceWinner(type, first.name, first.ticketNo), 1200);
+  }
+
+  showBigAnnouncement(`🎉 ${type}: ${namesText}`);
 });
 
 socket.on('gameOver', ({ message }) => {
@@ -298,4 +293,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-                            }
+        }

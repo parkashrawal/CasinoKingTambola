@@ -68,7 +68,7 @@ function getCorners(ticket) {
   return corners;
 }
 
-// ===== विजेता जाँच (टिकट नम्बरले पहिचान) =====
+// ===== विजेता जाँच =====
 function checkWinners(room, code) {
   const calledSet = new Set(room.calledNumbers);
 
@@ -84,14 +84,16 @@ function checkWinners(room, code) {
     }
 
     if (fullTickets.length > 0) {
-      room.winners.fullList = fullTickets;
-      room.winners.full = fullTickets[0].name;
-      room.winners.fullTicket = fullTickets[0].ticketNo;
+      // सामान्यतया पहिलो मात्र — तर सँगै भए दुवै (अधिकतम २)
+      const winners = fullTickets.slice(0, 2);
+      room.winners.fullList = winners;
+      room.winners.full = winners[0].name;
+      room.winners.fullTicket = winners[0].ticketNo;
 
-      // यदि कर्नर पहिले नै यही टिकटबाट जितिएको थियो भने हटाउने
+      // यदि कर्नर पहिले नै यिनै टिकटबाट जितिएको थियो भने हटाउने
       if (room.winners.cornerList) {
         const remaining = room.winners.cornerList.filter(c =>
-          !fullTickets.some(f => f.ticketNo === c.ticketNo)
+          !winners.some(w => w.ticketNo === c.ticketNo)
         );
         room.winners.cornerList = remaining.length > 0 ? remaining : null;
         if (!room.winners.cornerList) {
@@ -102,9 +104,9 @@ function checkWinners(room, code) {
 
       io.to(code).emit('winner', {
         type: 'फुल हाउस (विजेता)',
-        winners: fullTickets
+        winners: winners
       });
-      console.log(`✅ फुल हाउस: ${fullTickets.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
+      console.log(`✅ फुल हाउस: ${winners.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
 
       checkGameOver(room, code);
       return;
@@ -122,7 +124,7 @@ function checkWinners(room, code) {
       const player = room.players[i];
       const ticketNo = i + 1;
 
-      // ⚠️ यदि यही टिकट फुल हाउस जितिसकेको छ भने छोड्ने
+      // फुल हाउस जितेको टिकट छोड्ने
       if (fullTicketNos.includes(ticketNo)) continue;
 
       const corners = getCorners(player.ticket);
@@ -134,15 +136,17 @@ function checkWinners(room, code) {
     }
 
     if (cornerTickets.length > 0) {
-      room.winners.cornerList = cornerTickets;
-      room.winners.corner = cornerTickets[0].name;
-      room.winners.cornerTicket = cornerTickets[0].ticketNo;
+      // सामान्यतया पहिलो मात्र — तर सँगै भए दुवै (अधिकतम २)
+      const winners = cornerTickets.slice(0, 2);
+      room.winners.cornerList = winners;
+      room.winners.corner = winners[0].name;
+      room.winners.cornerTicket = winners[0].ticketNo;
 
       io.to(code).emit('winner', {
         type: 'कर्नर (दोस्रो)',
-        winners: cornerTickets
+        winners: winners
       });
-      console.log(`✅ कर्नर: ${cornerTickets.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
+      console.log(`✅ कर्नर: ${winners.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
 
       checkGameOver(room, code);
       return;
@@ -154,7 +158,7 @@ function checkWinners(room, code) {
 function checkGameOver(room, code) {
   if (!room.winners.fullList || !room.winners.cornerList) return;
 
-  // यदि एउटै टिकटले दुवै जित्यो भने खेल समाप्त हुँदैन
+  // यदि फुल हाउस र कर्नर दुवैमा एउटै टिकट छ भने खेल समाप्त हुँदैन
   const sameTicket = room.winners.fullList.some(f =>
     room.winners.cornerList.some(c => c.ticketNo === f.ticketNo)
   );
@@ -172,13 +176,11 @@ function checkGameOver(room, code) {
 io.on('connection', (socket) => {
   console.log('जोडियो:', socket.id);
 
-  // ===== होस्ट लगइन =====
   socket.on('hostLogin', ({ password }, callback) => {
     if (password === HOST_PASSWORD) callback({ success: true });
     else callback({ success: false, message: '❌ गलत पासवर्ड!' });
   });
 
-  // ===== रुम बनाउने =====
   socket.on('createRoomWithNames', ({ names }, callback) => {
     const code = generateRoomCode();
     const players = names.map((name, i) => ({
@@ -208,7 +210,6 @@ io.on('connection', (socket) => {
     console.log('रुम बन्यो:', code);
   });
 
-  // ===== खेल हेर्ने =====
   socket.on('viewLatestRoom', ({}, callback) => {
     if (!latestRoomCode || !rooms[latestRoomCode]) {
       return callback({ success: false, message: 'कुनै खेल भेटिएन' });
@@ -225,7 +226,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // ===== र्यान्डम नम्बर कल =====
   socket.on('callNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -252,7 +252,6 @@ io.on('connection', (socket) => {
     checkWinners(room, code);
   });
 
-  // ===== अटो नम्बर कल =====
   socket.on('autoCallNumber', ({ code }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;
@@ -279,7 +278,6 @@ io.on('connection', (socket) => {
     checkWinners(room, code);
   });
 
-  // ===== कस्टम नम्बर सेभ =====
   socket.on('setCustomNumber', ({ code, number }) => {
     const room = rooms[code];
     if (!room || room.hostId !== socket.id) return;

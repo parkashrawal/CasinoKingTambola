@@ -32,10 +32,11 @@ function hostLogin() {
   });
 }
 
+// ⚠️ ३० जना नाम इनपुट
 function showTicketSetup() {
   const container = document.getElementById('nameInputs');
   container.innerHTML = '';
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= 30; i++) {
     const div = document.createElement('div');
     div.className = 'name-input-row';
     div.innerHTML = `<label>टिकट ${i}:</label>
@@ -47,7 +48,7 @@ function showTicketSetup() {
 
 function startGameWithNames() {
   const names = [];
-  for (let i = 1; i <= 15; i++) {
+  for (let i = 1; i <= 30; i++) {
     const val = document.getElementById('name' + i).value.trim();
     if (val) names.push(val);
   }
@@ -78,16 +79,23 @@ function viewGame() {
       calledNumbers = res.calledNumbers || [];
       renderNumberBoard();
       renderAllTickets();
+
       if (res.winners) {
         if (res.winners.fullList && res.winners.fullList.length > 0) {
-          const text = res.winners.fullList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
-          document.getElementById('fullWinnerName').textContent = text;
-          document.getElementById('fullWinnerName').style.color = '#38ef7d';
+          const f = res.winners.fullList[0];
+          document.getElementById('firstWinnerName').textContent = `${f.name} (टिकट ${f.ticketNo})`;
+          document.getElementById('firstWinnerName').style.color = '#38ef7d';
+
+          if (res.winners.fullList.length > 1) {
+            const s = res.winners.fullList[1];
+            document.getElementById('secondWinnerName').textContent = `${s.name} (टिकट ${s.ticketNo})`;
+            document.getElementById('secondWinnerName').style.color = '#38ef7d';
+          }
         }
         if (res.winners.cornerList && res.winners.cornerList.length > 0) {
-          const text = res.winners.cornerList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
-          document.getElementById('cornerWinnerName').textContent = text;
-          document.getElementById('cornerWinnerName').style.color = '#38ef7d';
+          const t = res.winners.cornerList[0];
+          document.getElementById('thirdWinnerName').textContent = `${t.name} (टिकट ${t.ticketNo})`;
+          document.getElementById('thirdWinnerName').style.color = '#38ef7d';
         }
       }
       showPage('game');
@@ -227,7 +235,13 @@ function announceWinner(type, name, ticketNo) {
   if (!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   let message = '';
-  if (type.includes('फुल हाउस')) {
+  if (type.includes('फस्ट')) {
+    message = `Congratulations ${name}! Your ticket number ${ticketNo} is the first winner for full house!`;
+  } else if (type.includes('सेकेन्ड')) {
+    message = `Congratulations ${name}! Your ticket number ${ticketNo} is the second winner for full house!`;
+  } else if (type.includes('थर्ड')) {
+    message = `Congratulations ${name}! Your ticket number ${ticketNo} is the third winner for corner!`;
+  } else if (type.includes('फुल हाउस')) {
     message = `Congratulations ${name}! Your ticket number ${ticketNo} is the winner for full house!`;
   } else if (type.includes('कर्नर')) {
     message = `Congratulations ${name}! Your ticket number ${ticketNo} got the corner!`;
@@ -239,40 +253,36 @@ function announceWinner(type, name, ticketNo) {
   window.speechSynthesis.speak(utter);
 }
 
-socket.on('winner', ({ type, winners }) => {
+socket.on('winner', ({ type, name, ticketNo, place }) => {
   const msg = document.getElementById('gameMsg');
-
-  let namesText = '';
-  if (winners && winners.length > 0) {
-    namesText = winners.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
-  }
-
-  msg.textContent = `🎉 ${type}: ${namesText}`;
+  msg.textContent = `🎉 ${type}: ${name} (टिकट ${ticketNo})`;
   msg.style.color = '#38ef7d';
   msg.style.fontSize = '1.1rem';
 
-  if (type.includes('फुल हाउस')) {
-    const el = document.getElementById('fullWinnerName');
+  // विजेता पट्टीमा देखाउने
+  if (place === 1) {
+    const el = document.getElementById('firstWinnerName');
     if (el) {
-      el.textContent = namesText;
+      el.textContent = `${name} (टिकट ${ticketNo})`;
       el.style.color = '#38ef7d';
     }
-  } else if (type.includes('कर्नर')) {
-    const el = document.getElementById('cornerWinnerName');
+  } else if (place === 2) {
+    const el = document.getElementById('secondWinnerName');
     if (el) {
-      el.textContent = namesText;
+      el.textContent = `${name} (टिकट ${ticketNo})`;
+      el.style.color = '#38ef7d';
+    }
+  } else if (place === 3) {
+    const el = document.getElementById('thirdWinnerName');
+    if (el) {
+      el.textContent = `${name} (टिकट ${ticketNo})`;
       el.style.color = '#38ef7d';
     }
   }
 
   playCelebration();
-
-  if (winners && winners.length > 0) {
-    const first = winners[0];
-    setTimeout(() => announceWinner(type, first.name, first.ticketNo), 1200);
-  }
-
-  showBigAnnouncement(`🎉 ${type}: ${namesText}`);
+  setTimeout(() => announceWinner(type, name, ticketNo), 1200);
+  showBigAnnouncement(`🎉 ${type}: ${name} (टिकट ${ticketNo})`);
 });
 
 socket.on('gameOver', ({ message }) => {
@@ -293,4 +303,4 @@ function showBigAnnouncement(text) {
   div.style.whiteSpace = 'pre-line';
   document.body.appendChild(div);
   setTimeout(() => div.remove(), 5000);
-        }
+}

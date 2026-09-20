@@ -154,3 +154,23 @@ hr { border:1px solid rgba(255,255,255,0.2); margin:15px 0; }
   color: #333;
   opacity: 0.7;
 }
+/* टिकट सानो + २-२ गरी मिलाउने */
+#allTickets {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+.player-ticket-wrapper {
+  padding: 6px !important;
+}
+.player-ticket-name {
+  font-size: 0.75rem !important;
+  margin-bottom: 3px !important;
+}
+.ticket.small .cell {
+  font-size: 0.5rem !important;
+}
+.ticket.small {
+  padding: 3px !important;
+  gap: 1px !important;
+}

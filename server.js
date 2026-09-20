@@ -72,7 +72,7 @@ function getCorners(ticket) {
 function checkWinners(room, code) {
   const calledSet = new Set(room.calledNumbers);
 
-  // ===== १. फुल हाउस =====
+  // ===== १. फुल हाउस (फस्ट + सेकेन्ड) =====
   if (!room.winners.fullList) {
     const fullTickets = [];
     for (let i = 0; i < room.players.length; i++) {
@@ -84,7 +84,7 @@ function checkWinners(room, code) {
     }
 
     if (fullTickets.length > 0) {
-      // सामान्यतया पहिलो मात्र — तर सँगै भए दुवै (अधिकतम २)
+      // अधिकतम २ (फस्ट + सेकेन्ड)
       const winners = fullTickets.slice(0, 2);
       room.winners.fullList = winners;
       room.winners.full = winners[0].name;
@@ -102,10 +102,18 @@ function checkWinners(room, code) {
         }
       }
 
-      io.to(code).emit('winner', {
-        type: 'फुल हाउस (विजेता)',
-        winners: winners
+      // प्रत्येक विजेताको लागि घोषणा
+      winners.forEach((w, idx) => {
+        setTimeout(() => {
+          io.to(code).emit('winner', {
+            type: idx === 0 ? '🏆 फस्ट विजेता (फुल हाउस)' : '🥈 सेकेन्ड विजेता (फुल हाउस)',
+            name: w.name,
+            ticketNo: w.ticketNo,
+            place: idx + 1
+          });
+        }, idx * 1500);
       });
+
       console.log(`✅ फुल हाउस: ${winners.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
 
       checkGameOver(room, code);
@@ -113,7 +121,7 @@ function checkWinners(room, code) {
     }
   }
 
-  // ===== २. कर्नर =====
+  // ===== २. कर्नर (थर्ड) =====
   if (!room.winners.cornerList) {
     const cornerTickets = [];
     const fullTicketNos = room.winners.fullList
@@ -124,7 +132,6 @@ function checkWinners(room, code) {
       const player = room.players[i];
       const ticketNo = i + 1;
 
-      // फुल हाउस जितेको टिकट छोड्ने
       if (fullTicketNos.includes(ticketNo)) continue;
 
       const corners = getCorners(player.ticket);
@@ -136,17 +143,19 @@ function checkWinners(room, code) {
     }
 
     if (cornerTickets.length > 0) {
-      // सामान्यतया पहिलो मात्र — तर सँगै भए दुवै (अधिकतम २)
-      const winners = cornerTickets.slice(0, 2);
-      room.winners.cornerList = winners;
-      room.winners.corner = winners[0].name;
-      room.winners.cornerTicket = winners[0].ticketNo;
+      // पहिलो मात्र (थर्ड)
+      const winner = cornerTickets[0];
+      room.winners.cornerList = [winner];
+      room.winners.corner = winner.name;
+      room.winners.cornerTicket = winner.ticketNo;
 
       io.to(code).emit('winner', {
-        type: 'कर्नर (दोस्रो)',
-        winners: winners
+        type: '🥉 थर्ड विजेता (कर्नर)',
+        name: winner.name,
+        ticketNo: winner.ticketNo,
+        place: 3
       });
-      console.log(`✅ कर्नर: ${winners.map(w => w.ticketNo + '-' + w.name).join(', ')}`);
+      console.log(`✅ थर्ड (कर्नर): ${winner.name} (टिकट ${winner.ticketNo})`);
 
       checkGameOver(room, code);
       return;
@@ -158,18 +167,16 @@ function checkWinners(room, code) {
 function checkGameOver(room, code) {
   if (!room.winners.fullList || !room.winners.cornerList) return;
 
-  // यदि फुल हाउस र कर्नर दुवैमा एउटै टिकट छ भने खेल समाप्त हुँदैन
-  const sameTicket = room.winners.fullList.some(f =>
-    room.winners.cornerList.some(c => c.ticketNo === f.ticketNo)
-  );
-  if (sameTicket) return;
-
-  const fullText = room.winners.fullList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
-  const cornerText = room.winners.cornerList.map(w => `${w.name} (टिकट ${w.ticketNo})`).join(', ');
+  const fullText = room.winners.fullList.map((w, i) =>
+    `${i === 0 ? '🏆' : '🥈'} ${w.name} (टिकट ${w.ticketNo})`
+  ).join('\n');
+  const cornerText = room.winners.cornerList.map(w =>
+    `🥉 ${w.name} (टिकट ${w.ticketNo})`
+  ).join('\n');
 
   room.gameOver = true;
   io.to(code).emit('gameOver', {
-    message: `🏁 खेल समाप्त!\n\n🏆 विजेता (फुल हाउस): ${fullText}\n🥈 दोस्रो (कर्नर): ${cornerText}`
+    message: `🏁 खेल समाप्त!\n\n${fullText}\n${cornerText}`
   });
 }
 

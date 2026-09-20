@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tambola">
 
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <h1>🇳🇵 TAMBOLA 🇳🇵</h1>
@@ -34,7 +34,7 @@
 
 <div id="ticketSetup" class="card" style="display:none">
   <h2>✏️ खेलाडीहरूको नाम लेख्नुहोस्</h2>
-  <p>कम्तीमा २ जना, बढीमा १५ जना</p>
+  <p>कम्तीमा २ जना, बढीमा ३० जना</p>
   <div id="nameInputs"></div>
   <button onclick="startGameWithNames()">🎮 गेम सुरु गर्नुहोस्</button>
   <div id="setupMsg" class="msg"></div>
@@ -44,12 +44,16 @@
 
   <div class="winner-banner">
     <div class="winner-item">
-      <span class="winner-label">🏆 फुल हाउस (विजेता):</span>
-      <span class="winner-name" id="fullWinnerName">--</span>
+      <span class="winner-label">🏆 फस्ट (फुल हाउस):</span>
+      <span class="winner-name" id="firstWinnerName">--</span>
     </div>
     <div class="winner-item">
-      <span class="winner-label">🥈 कर्नर (दोस्रो):</span>
-      <span class="winner-name" id="cornerWinnerName">--</span>
+      <span class="winner-label">🥈 सेकेन्ड (फुल हाउस):</span>
+      <span class="winner-name" id="secondWinnerName">--</span>
+    </div>
+    <div class="winner-item">
+      <span class="winner-label">🥉 थर्ड (कर्नर):</span>
+      <span class="winner-name" id="thirdWinnerName">--</span>
     </div>
   </div>
 
@@ -60,13 +64,13 @@
 
   <div class="card">
     <div class="top-bar">
-      <div>नम्बर:बोर्ड <b id="currentNumber">--</b></div>
+      <div>नम्बर: <b id="currentNumber">--</b></div>
     </div>
     <div class="host-panel" id="hostPanel" style="display:none">
       <button onclick="callNumber()">🎲 र्यान्डम नम्बर कल</button>
       <button onclick="autoToggle()" id="autoBtn">अटो: बन्द</button>
       <hr>
-      <h4> खेल रोक्नुहोस्</h4>
+      <h4>🏁 खेल रोक्नुहोस्</h4>
       <input id="customNumber" type="number" min="1" max="99" placeholder="नम्बर (१-९९)" onchange="saveCustomNumber()">
     </div>
     <div id="gameMsg" class="msg"></div>
@@ -82,12 +86,12 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="script.js?v=6"></script>
+<script src="script.js?v=7"></script>
 
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js?v=6')
+      navigator.serviceWorker.register('service-worker.js?v=7')
         .then((reg) => console.log('Service Worker चल्यो:', reg.scope))
         .catch((err) => console.log('Service Worker error:', err));
     });
